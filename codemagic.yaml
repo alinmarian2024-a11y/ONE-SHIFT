@@ -7,16 +7,27 @@ workflows:
       java: 17
 
     scripts:
-      - name: Configure Android SDK
+      - name: Find and build Android project
         script: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
-          chmod +x "$CM_BUILD_DIR/gradlew"
+          GRADLEW_PATH="$(find "$CM_BUILD_DIR" -type f -name gradlew -not -path "*/.git/*" -print -quit)"
 
-      - name: Build debug APK
-        script: |
-          cd "$CM_BUILD_DIR"
-          ./gradlew clean :app:assembleDebug --stacktrace --no-daemon
+          if [ -z "$GRADLEW_PATH" ]; then
+            echo "ERROR: No gradlew file exists anywhere in the repository."
+            echo "Repository structure:"
+            find "$CM_BUILD_DIR" -maxdepth 4 -type f | sort
+            exit 1
+          fi
+
+          PROJECT_DIR="$(dirname "$GRADLEW_PATH")"
+
+          echo "Android project found at: $PROJECT_DIR"
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$PROJECT_DIR/local.properties"
+
+          chmod +x "$GRADLEW_PATH"
+          cd "$PROJECT_DIR"
+
+          ./gradlew clean assembleDebug --stacktrace --no-daemon
 
     artifacts:
-      - app/build/outputs/apk/debug/*.apk
-      - app/build/reports/**
+      - "**/build/outputs/apk/debug/*.apk"
+      - "**/build/reports/**"
