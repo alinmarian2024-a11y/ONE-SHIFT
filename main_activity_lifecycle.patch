@@ -1,0 +1,24 @@
+--- app/src/main/java/com/example/MainActivity.kt
++++ app/src/main/java/com/example/MainActivity.kt
+@@ -714,6 +714,21 @@
+             }
+         }
+     }
++
++    override fun onStart() {
++        super.onStart()
++        GameAudioManager.getInstance(this).onAppForeground()
++    }
++
++    override fun onStop() {
++        super.onStop()
++        GameAudioManager.getInstance(this).onAppBackground()
++    }
++
++    override fun onDestroy() {
++        super.onDestroy()
++        GameAudioManager.getInstance(this).release()
++    }
+ }
+ 
+ @Composable

@@ -1,0 +1,64 @@
+--- app/src/main/java/com/example/MainActivity.kt
++++ app/src/main/java/com/example/MainActivity.kt
+@@ -853,6 +853,9 @@
+     val context = LocalContext.current
+     val audioManager = remember { GameAudioManager.getInstance(context) }
+ 
++    val hintRepository = remember { HintRepository.getInstance(context) }
++    val hintState by hintRepository.hintState.collectAsState()
++
+     val boardSize = puzzleData.config.size
+     val isTutorial = currentLevel == 1
+     val hintMove = if (isTutorial || showHint) currentSolutionPath.firstOrNull() else null
+@@ -869,6 +872,7 @@
+             saveLevelResult(prefs, currentLevel, stars, movesCount)
+             delay(300)
+             audioManager.playSolve(stars)
++            hintRepository.checkAndGrantThresholdBonus(currentLevel)
+             levelFinished = true
+         }
+     }
+@@ -1094,11 +1098,40 @@
+                         }
+                         Spacer(modifier = Modifier.width(16.dp))
+                         Button(
+-                            onClick = { showHint = true },
++                            onClick = { 
++                                if (currentLevel <= 5) {
++                                    showHint = true
++                                } else {
++                                    if (hintState.totalHints > 0) {
++                                        if (!showHint && hintMove != null) {
++                                            hintRepository.consumeHint()
++                                            showHint = true
++                                        }
++                                    } else {
++                                        // show video ad
++                                        val activity = context as? android.app.Activity
++                                        if (activity != null) {
++                                            FakeRewardedHintAdProvider().loadAndShow(
++                                                activity,
++                                                onReward = { hintRepository.addRewardedAdHint() },
++                                                onFailedOrClosed = {}
++                                            )
++                                        }
++                                    }
++                                }
++                            },
+                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)),
+                             modifier = Modifier.weight(1f).height(48.dp),
+-                            enabled = (currentLevel <= 5 || showHint) && !inputLocked
++                            enabled = !inputLocked
+                         ) {
+-                            Text("Indiciu", color = Color.White)
++                            val text = if (currentLevel <= 5) {
++                                "INDICIU GRATUIT"
++                            } else if (hintState.totalHints > 0) {
++                                "INDICIU • ${hintState.totalHints}"
++                            } else {
++                                "VEZI VIDEO • +1 INDICIU"
++                            }
++                            Text(text, color = Color.White)
+                         }
+                     }
+                 } else {

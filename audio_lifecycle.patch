@@ -1,0 +1,30 @@
+--- app/src/main/java/com/example/MainActivity.kt
++++ app/src/main/java/com/example/MainActivity.kt
+@@ -570,6 +570,8 @@
+         
+         val prefs = getSharedPreferences("OneShiftPrefs", Context.MODE_PRIVATE)
+         billingRepository = BillingRepositoryFactory.create(this, prefs)
++
++        GameAudioManager.getInstance(this)
+         
+         enableEdgeToEdge()
+         setContent {
+@@ -608,6 +610,16 @@
+         }
+     }
++
++    override fun onStart() {
++        super.onStart()
++        GameAudioManager.getInstance(this).onAppForeground()
++    }
++
++    override fun onStop() {
++        super.onStop()
++        GameAudioManager.getInstance(this).onAppBackground()
++    }
++
++    override fun onDestroy() {
++        super.onDestroy()
++        GameAudioManager.getInstance(this).release()
++    }
+ }

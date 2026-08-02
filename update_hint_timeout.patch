@@ -1,0 +1,17 @@
+--- app/src/main/java/com/example/MainActivity.kt
++++ app/src/main/java/com/example/MainActivity.kt
+@@ -887,6 +887,14 @@
+             inputLocked = false
+         } else {
+             showExitDialog = true
++        }
++    }
++
++    LaunchedEffect(showHint) {
++        if (showHint && currentLevel > 5) {
++            // Hint visible for 3 seconds
++            delay(3000)
++            showHint = false
+         }
+     }
+ 

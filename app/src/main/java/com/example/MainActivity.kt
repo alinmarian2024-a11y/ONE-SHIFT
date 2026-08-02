@@ -34,7 +34,18 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.MusicOff
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material3.Slider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.ui.zIndex
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import kotlinx.coroutines.launch
 import com.example.ui.theme.MyApplicationTheme
@@ -199,9 +210,33 @@ fun MainMenuScreen(
     onRemoveAds: () -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
+    onExitApp: () -> Unit,
     isAdFree: Boolean
 ) {
     var showNewGameDialog by remember { mutableStateOf(false) }
+    var showExitAppDialog by remember { mutableStateOf(false) }
+
+    BackHandler {
+        showExitAppDialog = true
+    }
+
+    if (showExitAppDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitAppDialog = false },
+            title = { Text("Ieși din joc?", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = { Text("Progresul și setările tale sunt salvate automat.", color = Color.Gray) },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showExitAppDialog = false
+                    onExitApp()
+                }) { Text("DA, ÎNCHIDE", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitAppDialog = false }) { Text("RĂMÂN ÎN JOC", color = Color.Gray) }
+            },
+            containerColor = Color(0xFF2B2930)
+        )
+    }
 
     if (showNewGameDialog) {
         AlertDialog(
@@ -221,14 +256,15 @@ fun MainMenuScreen(
         )
     }
 
-    Column(
-        modifier = modifier.fillMaxSize().background(Color(0xFF1C1B1F)).padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("ONE SHIFT", color = Color.White, fontSize = 48.sp, fontWeight = FontWeight.Black, letterSpacing = (-2).sp)
-        Box(modifier = Modifier.height(6.dp).width(80.dp).background(Color(0xFFD0BCFF)).padding(bottom = 64.dp))
-        Spacer(modifier = Modifier.height(48.dp))
+    Box(modifier = modifier.fillMaxSize().background(Color(0xFF1C1B1F))) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("ONE SHIFT", color = Color.White, fontSize = 48.sp, fontWeight = FontWeight.Black, letterSpacing = (-2).sp)
+            Box(modifier = Modifier.height(6.dp).width(80.dp).background(Color(0xFFD0BCFF)).padding(bottom = 64.dp))
+            Spacer(modifier = Modifier.height(48.dp))
         
         Button(onClick = onContinue, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF)), modifier = Modifier.fillMaxWidth().height(64.dp)) {
             Text("CONTINUĂ", color = Color(0xFF381E72), fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -263,7 +299,17 @@ fun MainMenuScreen(
                 Text("DESPRE JOC", color = Color.White, fontSize = 14.sp)
             }
         }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { showExitAppDialog = true },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1C1B1F), contentColor = Color(0xFFFF7F50)),
+            modifier = Modifier.fillMaxWidth().height(56.dp).border(1.dp, Color(0xFFFF7F50), RoundedCornerShape(50))
+        ) {
+            Text("IEȘIRE DIN JOC", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        }
     }
+}
 }
 
 @Composable
@@ -324,12 +370,54 @@ fun SettingsDialog(
     onRemoveAds: () -> Unit,
     onRestorePurchases: () -> Unit
 ) {
+    val context = LocalContext.current
+    val audioManager = remember { GameAudioManager.getInstance(context) }
+    
+    val musicVolume by audioManager.musicVolume.collectAsState()
+    val sfxVolume by audioManager.sfxVolume.collectAsState()
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Setări", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text("SETĂRI", color = Color.White, fontWeight = FontWeight.Bold) },
         text = { 
-            Column {
-                Text("Opțiunile vor fi adăugate în curând.", color = Color.Gray)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text("AUDIO", color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text("MUZICĂ: ${(musicVolume * 100).toInt()}%", color = Color.White, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (musicVolume <= 0f) Icons.Filled.MusicOff else Icons.Filled.MusicNote, 
+                        contentDescription = "Muzică", 
+                        tint = Color(0xFFCAC4D0),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Slider(
+                        value = musicVolume,
+                        onValueChange = { audioManager.setMusicVolume(it) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text("EFECTE SONORE: ${(sfxVolume * 100).toInt()}%", color = Color.White, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (sfxVolume <= 0f) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, 
+                        contentDescription = "Efecte", 
+                        tint = Color(0xFFCAC4D0),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Slider(
+                        value = sfxVolume,
+                        onValueChange = { audioManager.setSfxVolume(it) },
+                        onValueChangeFinished = { audioManager.playTestSfx() },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 Text("ACHIZIȚII", color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
@@ -349,7 +437,13 @@ fun SettingsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("ÎNCHIDE", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+            TextButton(onClick = {
+                audioManager.saveSettings()
+                onDismiss()
+            }) { Text("SALVEAZĂ ȘI ÎNAPOI LA MENIU", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = {
+            TextButton(onClick = { audioManager.restoreDefaults() }) { Text("RESTAUREAZĂ VALORILE IMPLICITE", color = Color.Gray) }
         },
         containerColor = Color(0xFF2B2930)
     )
@@ -531,6 +625,8 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("OneShiftPrefs", Context.MODE_PRIVATE)
         billingRepository = BillingRepositoryFactory.create(this, prefs)
         
+        GameAudioManager.getInstance(this)
+
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
@@ -541,8 +637,18 @@ class MainActivity : ComponentActivity() {
                 var currentScreen by remember { mutableStateOf(ScreenState.MENU) }
                 var gameLevel by remember { mutableIntStateOf(prefs.getInt("max_unlocked_level", 1)) }
                 var showSettings by remember { mutableStateOf(false) }
+                val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                LaunchedEffect(Unit) {
+                    HintEventBus.events.collect { message ->
+                        snackbarHostState.showSnackbar(message)
+                    }
+                }
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) }
+                ) { innerPadding ->
                     when (currentScreen) {
                         ScreenState.MENU -> MainMenuScreen(
                             modifier = Modifier.padding(innerPadding),
@@ -551,8 +657,34 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = ScreenState.GAME
                             },
                             onNewGame = {
-                                prefs.edit().clear().apply() // sterge tot, inclusiv max_unlocked_level, moves, stars
-                                prefs.edit().putBoolean("is_ad_free", isAdFree).apply() // restore ads state
+                                val keysToKeep = listOf(
+                                    "is_ad_free",
+                                    "music_volume",
+                                    "sfx_volume",
+                                    "daily_hints",
+                                    "bonus_hints",
+                                    "initial_hint_bonus_granted",
+                                    "last_daily_hint_epoch_day",
+                                    "rewarded_thresholds"
+                                )
+                                val savedValues = keysToKeep.associateWith { prefs.all[it] }
+                                prefs.edit().clear().apply()
+                                
+                                val editor = prefs.edit()
+                                savedValues.forEach { (key, value) ->
+                                    if (value != null) {
+                                        when (value) {
+                                            is Boolean -> editor.putBoolean(key, value)
+                                            is Int -> editor.putInt(key, value)
+                                            is Float -> editor.putFloat(key, value)
+                                            is Long -> editor.putLong(key, value)
+                                            is String -> editor.putString(key, value)
+                                            is Set<*> -> editor.putStringSet(key, value as Set<String>)
+                                        }
+                                    }
+                                }
+                                editor.apply()
+                                
                                 gameLevel = 1
                                 currentScreen = ScreenState.GAME
                             },
@@ -560,6 +692,7 @@ class MainActivity : ComponentActivity() {
                             onRemoveAds = { billingRepository.initiatePurchaseFlow(this@MainActivity) },
                             onSettings = { showSettings = true },
                             onAbout = { currentScreen = ScreenState.ABOUT },
+                            onExitApp = { this@MainActivity.finishAndRemoveTask() },
                             isAdFree = isAdFree
                         )
                         ScreenState.LEVEL_SELECT -> LevelSelectScreen(
@@ -674,6 +807,21 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStart() {
+        super.onStart()
+        GameAudioManager.getInstance(this).onAppForeground()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        GameAudioManager.getInstance(this).onAppBackground()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        GameAudioManager.getInstance(this).release()
+    }
 }
 
 @Composable
@@ -696,13 +844,33 @@ fun GameScreen(
     var currentSolutionPath by remember { mutableStateOf(puzzleData.solutionMoves) }
     var levelFinished by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+    var isAdLoading by remember { mutableStateOf(false) }
     
     var inputLocked by remember { mutableStateOf(false) }
     var replayCount by remember { mutableIntStateOf(0) }
 
+    val context = LocalContext.current
+    val audioManager = remember { GameAudioManager.getInstance(context) }
+    
+    val hintRepository = remember { HintRepository.getInstance(context) }
+    val hintState by hintRepository.hintState.collectAsState()
+
     val boardSize = puzzleData.config.size
     val isTutorial = currentLevel == 1
-    val hintMove = if (isTutorial || showHint) currentSolutionPath.firstOrNull() else null
+    var actualHintMove by remember { mutableStateOf<Move?>(null) }
+    var isCalculatingHint by remember { mutableStateOf(false) }
+    val hintMove = if (isTutorial || showHint) actualHintMove else null
+    LaunchedEffect(playerBoard, currentLevel, replayCount) {
+        if (!isSolved) {
+            isCalculatingHint = true
+            actualHintMove = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                Solver.getHintMove(playerBoard, puzzleData.targetBoard, currentSolutionPath)
+            }
+            isCalculatingHint = false
+        }
+    }
+
 
     LaunchedEffect(currentLevel) {
         puzzleData = generatePuzzle(currentLevel)
@@ -721,34 +889,38 @@ fun GameScreen(
             val stars = calculateStars(movesCount, puzzleData.config.moves)
             saveLevelResult(prefs, currentLevel, stars, movesCount)
             delay(300)
+            audioManager.playSolve(stars)
+            hintRepository.checkAndGrantThresholdBonus(currentLevel)
             levelFinished = true
         }
     }
 
     val lockReason = when {
         showSettings -> "DIALOG"
+        showExitDialog -> "DIALOG"
         levelFinished -> "LEVEL COMPLETE"
         inputLocked -> "ANIMATION"
         else -> null
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        if (BuildConfig.DEBUG) {
-            val statusColor = if (lockReason == null) Color.Green else Color.Red
-            val statusText = if (lockReason == null) "INPUT: READY" else "INPUT: LOCKED ($lockReason)"
-            Text(
-                text = statusText,
-                color = statusColor,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(8.dp)
-                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                    .padding(4.dp)
-                    .zIndex(100f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
+    BackHandler(enabled = !levelFinished) {
+        if (showExitDialog) {
+            showExitDialog = false
+            inputLocked = false
+        } else {
+            showExitDialog = true
+            inputLocked = true
         }
+    }
+
+    LaunchedEffect(showHint) {
+        if (showHint) {
+            delay(3000)
+            showHint = false
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
 
         Column(
             modifier = Modifier
@@ -758,19 +930,33 @@ fun GameScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
+            Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.Start
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "ONE SHIFT",
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-1).sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(modifier = Modifier.height(4.dp).width(48.dp).background(Color(0xFFD0BCFF)))
+                Column {
+                    Text(
+                        text = "ONE SHIFT",
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-1).sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(modifier = Modifier.height(4.dp).width(48.dp).background(Color(0xFFD0BCFF)))
+                }
+                TextButton(
+                    onClick = {
+                        showExitDialog = true
+                        inputLocked = true
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFCAC4D0))
+                ) {
+                    Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Ieșire Joc", modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("IEȘIRE JOC", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             Column(
@@ -881,7 +1067,8 @@ fun GameScreen(
                                 },
                                 hintMove = hintMove,
                                 isInputLocked = inputLocked,
-                                onInputLockedChange = { inputLocked = it }
+                                onInputLockedChange = { inputLocked = it },
+                                onAnimationStart = { audioManager.playSlide() }
                             )
                         }
                     }
@@ -911,12 +1098,70 @@ fun GameScreen(
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Button(
-                            onClick = { showHint = true },
+                            onClick = { 
+                                if (currentLevel <= 5) {
+                                    if (actualHintMove != null) {
+                                        showHint = true
+                                    } else {
+                                        HintEventBus.emitEvent("Nu există o mutare garantată. Folosește Reset!")
+                                    }
+                                } else {
+                                    if (hintState.totalHints > 0) {
+                                        if (!showHint) {
+                                            if (actualHintMove != null) {
+                                                hintRepository.consumeHint()
+                                                showHint = true
+                                            } else {
+                                                HintEventBus.emitEvent("Nu există o mutare garantată. Folosește Reset!")
+                                            }
+                                        }
+                                    } else {
+                                        val activity = context as? android.app.Activity
+                                        if (activity != null && !isAdLoading) {
+                                            isAdLoading = true
+                                            FakeRewardedHintAdProvider().loadAndShow(
+                                                activity,
+                                                onReward = { 
+                                                    hintRepository.addRewardedAdHint()
+                                                    isAdLoading = false 
+                                                },
+                                                onFailedOrClosed = { isAdLoading = false }
+                                            )
+                                        }
+                                    }
+                                }
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)),
                             modifier = Modifier.weight(1f).height(48.dp),
-                            enabled = (currentLevel <= 5 || showHint) && !inputLocked
+                            enabled = !inputLocked && !isAdLoading && !showHint && !isCalculatingHint,
+                            contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
-                            Text("Indiciu", color = Color.White)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                if (showHint) {
+                                    Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("INDICIU...", color = Color.White, fontSize = 11.sp, textAlign = TextAlign.Center)
+                                } else if (isAdLoading || isCalculatingHint) {
+                                    Text("SE ÎNCARCĂ...", color = Color.White, fontSize = 11.sp, textAlign = TextAlign.Center)
+                                } else {
+                                    if (currentLevel <= 5 || hintState.totalHints > 0) {
+                                        Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    } else {
+                                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                    
+                                    val text = if (currentLevel <= 5) {
+                                        "INDICIU GRATUIT"
+                                    } else if (hintState.totalHints > 0) {
+                                        "INDICIU • ${hintState.totalHints}"
+                                    } else {
+                                        "VEZI VIDEO • +1 INDICIU"
+                                    }
+                                    Text(text, color = Color.White, fontSize = 11.sp, textAlign = TextAlign.Center, maxLines = 1)
+                                }
+                            }
                         }
                     }
                 } else {
@@ -957,6 +1202,31 @@ fun GameScreen(
                 onRestorePurchases = onRestorePurchases
             )
         }
+
+        if (showExitDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showExitDialog = false
+                    inputLocked = false
+                },
+                title = { Text("Ești sigur?", color = Color.White, fontWeight = FontWeight.Bold) },
+                text = { Text("Vei pierde mutările făcute în această încercare. Nivelurile terminate, stelele și recordurile rămân salvate.", color = Color.Gray) },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        showExitDialog = false
+                        inputLocked = false
+                        onBackToMenu()
+                    }) { Text("DA, IEȘI", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        showExitDialog = false
+                        inputLocked = false
+                    }) { Text("REVENIRE ÎN JOC", color = Color.Gray) }
+                },
+                containerColor = Color(0xFF2B2930)
+            )
+        }
     }
 }
 
@@ -970,7 +1240,8 @@ fun Board(
     onShiftCol: (Int, Int) -> Unit,
     hintMove: Move?,
     isInputLocked: Boolean = false,
-    onInputLockedChange: (Boolean) -> Unit = {}
+    onInputLockedChange: (Boolean) -> Unit = {},
+    onAnimationStart: () -> Unit = {}
 ) {
     val boardSize = board.size
     val boardPx = pieceSize * boardSize + spacing * (boardSize - 1)
@@ -1018,6 +1289,7 @@ fun Board(
                             val direction = if (accumulatedDx > 0) 1 else -1
                             actionCommitted = true
                             onInputLockedChange(true)
+                            onAnimationStart()
                             coroutineScope.launch {
                                 try {
                                     animatingRow = startRow
@@ -1039,6 +1311,7 @@ fun Board(
                             val direction = if (accumulatedDy > 0) 1 else -1
                             actionCommitted = true
                             onInputLockedChange(true)
+                            onAnimationStart()
                             coroutineScope.launch {
                                 try {
                                     animatingCol = startCol
