@@ -7,27 +7,70 @@ workflows:
       java: 17
 
     scripts:
-      - name: Find and build Android project
+      - name: Configure Android build tools
         script: |
-          GRADLEW_PATH="$(find "$CM_BUILD_DIR" -type f -name gradlew -not -path "*/.git/*" -print -quit)"
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
 
-          if [ -z "$GRADLEW_PATH" ]; then
-            echo "ERROR: No gradlew file exists anywhere in the repository."
-            echo "Repository structure:"
-            find "$CM_BUILD_DIR" -maxdepth 4 -type f | sort
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+          GRADLE_VERSION="9.3.1"
+          GRADLE_ARCHIVE="/tmp/gradle-${GRADLE_VERSION}-bin.zip"
+          GRADLE_HOME="/tmp/gradle-${GRADLE_VERSION}"
+
+          if [ ! -x "${GRADLE_HOME}/bin/gradle" ]; then
+            curl --fail --location --retry 3 \
+              "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+              --output "${GRADLE_ARCHIVE}"
+            unzip -q "${GRADLE_ARCHIVE}" -d /tmp
+          fi
+
+          "${GRADLE_HOME}/bin/gradle" --version
+
+      - name: Create temporary debug keystore
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
+
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair \
+              -keystore debug.keystore \
+              -storetype JKS \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Build debug APK
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
+
+          /tmp/gradle-9.3.1/bin/gradle \
+            --no-daemon \
+            --stacktrace \
+            clean :app:assembleDebug
+
+      - name: Verify APK launcher
+        script: |
+          set -euo pipefail
+          cd "$CM_BUILD_DIR"
+
+          APK_PATH="$(find app/build/outputs/apk/debug -type f -name '*.apk' -print -quit)"
+          if [ -z "$APK_PATH" ]; then
+            echo "ERROR: Debug APK was not generated."
             exit 1
           fi
 
-          PROJECT_DIR="$(dirname "$GRADLEW_PATH")"
+          AAPT_PATH="$(find "$ANDROID_SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
 
-          echo "Android project found at: $PROJECT_DIR"
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$PROJECT_DIR/local.properties"
-
-          chmod +x "$GRADLEW_PATH"
-          cd "$PROJECT_DIR"
-
-          ./gradlew clean assembleDebug --stacktrace --no-daemon
+          echo "Generated APK: $APK_PATH"
+          "$AAPT_PATH" dump badging "$APK_PATH" | grep -E "^(package:|launchable-activity:)"
 
     artifacts:
-      - "**/build/outputs/apk/debug/*.apk"
-      - "**/build/reports/**"
+      - app/build/outputs/apk/debug/*.apk
+      - app/build/reports/**
