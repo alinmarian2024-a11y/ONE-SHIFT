@@ -2,7 +2,7 @@ package com.example
 
 import android.content.Context
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.core.*
@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -193,12 +194,13 @@ fun calculateStars(movesUsed: Int, recommendedMoves: Int): Int {
     }
 }
 
+@Composable
 fun getStarMessage(stars: Int): String = when(stars) {
-    5 -> "PERFECT SHIFT! Minte ascuțită!"
-    4 -> "Excelent! Foarte aproape de perfect!"
-    3 -> "Foarte bine! Nivel rezolvat!"
-    2 -> "Ai reușit! Poți obține și mai mult!"
-    else -> "Nivel terminat! Reîncearcă pentru mai multe stele!"
+    5 -> stringResource(R.string.star_msg_5)
+    4 -> stringResource(R.string.star_msg_4)
+    3 -> stringResource(R.string.star_msg_3)
+    2 -> stringResource(R.string.star_msg_2)
+    else -> stringResource(R.string.star_msg_1)
 }
 
 @Composable
@@ -214,7 +216,7 @@ fun MainMenuScreen(
     isAdFree: Boolean
 ) {
     var showNewGameDialog by remember { mutableStateOf(false) }
-    var showExitAppDialog by remember { mutableStateOf(false) }
+    var showExitAppDialog by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
 
     BackHandler {
         showExitAppDialog = true
@@ -222,17 +224,23 @@ fun MainMenuScreen(
 
     if (showExitAppDialog) {
         AlertDialog(
-            onDismissRequest = { showExitAppDialog = false },
-            title = { Text("Ieși din joc?", color = Color.White, fontWeight = FontWeight.Bold) },
-            text = { Text("Progresul și setările tale sunt salvate automat.", color = Color.Gray) },
+            properties = androidx.compose.ui.window.DialogProperties(
+                dismissOnClickOutside = false,
+                dismissOnBackPress = false
+            ),
+            onDismissRequest = { 
+                // Do nothing
+            },
+            title = { Text(stringResource(R.string.exit_game_dialog_title), color = Color.White, fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.exit_game_dialog_text), color = Color.Gray) },
             confirmButton = {
                 TextButton(onClick = { 
                     showExitAppDialog = false
                     onExitApp()
-                }) { Text("DA, ÎNCHIDE", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+                }) { Text(stringResource(R.string.yes_exit), color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showExitAppDialog = false }) { Text("RĂMÂN ÎN JOC", color = Color.Gray) }
+                TextButton(onClick = { showExitAppDialog = false }) { Text(stringResource(R.string.return_to_menu), color = Color.Gray) }
             },
             containerColor = Color(0xFF2B2930)
         )
@@ -241,16 +249,16 @@ fun MainMenuScreen(
     if (showNewGameDialog) {
         AlertDialog(
             onDismissRequest = { showNewGameDialog = false },
-            title = { Text("Începi un joc nou?", color = Color.White, fontWeight = FontWeight.Bold) },
-            text = { Text("Nivelurile deblocate, stelele și recordurile vor fi șterse. Setările și achizițiile vor fi păstrate.", color = Color.Gray) },
+            title = { Text(stringResource(R.string.new_game_dialog_title), color = Color.White, fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.new_game_dialog_text), color = Color.Gray) },
             confirmButton = {
                 TextButton(onClick = { 
                     showNewGameDialog = false
                     onNewGame()
-                }) { Text("ÎNCEPE JOC NOU", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+                }) { Text(stringResource(R.string.start_new_game), color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showNewGameDialog = false }) { Text("ANULEAZĂ", color = Color.Gray) }
+                TextButton(onClick = { showNewGameDialog = false }) { Text(stringResource(R.string.cancel), color = Color.Gray) }
             },
             containerColor = Color(0xFF2B2930)
         )
@@ -266,47 +274,48 @@ fun MainMenuScreen(
             Box(modifier = Modifier.height(6.dp).width(80.dp).background(Color(0xFFD0BCFF)).padding(bottom = 64.dp))
             Spacer(modifier = Modifier.height(48.dp))
         
-        Button(onClick = onContinue, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF)), modifier = Modifier.fillMaxWidth().height(64.dp)) {
-            Text("CONTINUĂ", color = Color(0xFF381E72), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Button(enabled = !showExitAppDialog && !showNewGameDialog, onClick = onContinue, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF)), modifier = Modifier.fillMaxWidth().height(64.dp)) {
+            Text(stringResource(R.string.continue_game), color = Color(0xFF381E72), fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { showNewGameDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text("JOC NOU", color = Color.White, fontSize = 16.sp)
+        Button(enabled = !showExitAppDialog && !showNewGameDialog, onClick = { showNewGameDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Text(stringResource(R.string.new_game), color = Color.White, fontSize = 16.sp)
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onSelectLevel, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text("SELECTEAZĂ NIVELUL", color = Color.White, fontSize = 16.sp)
+        Button(enabled = !showExitAppDialog && !showNewGameDialog, onClick = onSelectLevel, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            Text(stringResource(R.string.select_level), color = Color.White, fontSize = 16.sp)
         }
         Spacer(modifier = Modifier.height(16.dp))
         
         if (isAdFree) {
-            Button(onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1C1B1F), contentColor = Color(0xFF38E887)), modifier = Modifier.fillMaxWidth().height(56.dp).border(1.dp, Color(0xFF38E887), RoundedCornerShape(50))) {
-                Text("RECLAME ELIMINATE ✓", fontSize = 16.sp)
+            Button(enabled = !showExitAppDialog && !showNewGameDialog, onClick = {}, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1C1B1F), contentColor = Color(0xFF38E887)), modifier = Modifier.fillMaxWidth().height(56.dp).border(1.dp, Color(0xFF38E887), RoundedCornerShape(50))) {
+                Text(stringResource(R.string.ads_removed), fontSize = 16.sp)
             }
         } else {
-            Button(onClick = onRemoveAds, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(56.dp).border(1.dp, Color(0xFF00BCD4), RoundedCornerShape(50))) {
-                Text("ELIMINĂ RECLAMELE", color = Color.White, fontSize = 16.sp)
+            Button(enabled = !showExitAppDialog && !showNewGameDialog, onClick = onRemoveAds, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(56.dp).border(1.dp, Color(0xFF00BCD4), RoundedCornerShape(50))) {
+                Text(stringResource(R.string.remove_ads), color = Color.White, fontSize = 16.sp)
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Button(onClick = onSettings, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.weight(1f).height(56.dp)) {
-                Text("SETĂRI", color = Color.White, fontSize = 14.sp)
+            Button(enabled = !showExitAppDialog && !showNewGameDialog, onClick = onSettings, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.weight(1f).height(56.dp)) {
+                Text(stringResource(R.string.settings_upper), color = Color.White, fontSize = 14.sp)
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Button(onClick = onAbout, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.weight(1f).height(56.dp)) {
-                Text("DESPRE JOC", color = Color.White, fontSize = 14.sp)
+            Button(enabled = !showExitAppDialog && !showNewGameDialog, onClick = onAbout, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.weight(1f).height(56.dp)) {
+                Text(stringResource(R.string.about_game), color = Color.White, fontSize = 14.sp)
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         Button(
+            enabled = !showExitAppDialog && !showNewGameDialog,
             onClick = { showExitAppDialog = true },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1C1B1F), contentColor = Color(0xFFFF7F50)),
             modifier = Modifier.fillMaxWidth().height(56.dp).border(1.dp, Color(0xFFFF7F50), RoundedCornerShape(50))
         ) {
-            Text("IEȘIRE DIN JOC", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.exit_game), fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -319,9 +328,9 @@ fun LevelSelectScreen(modifier: Modifier = Modifier, prefs: android.content.Shar
     Column(modifier = modifier.fillMaxSize().background(Color(0xFF1C1B1F))) {
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("Înapoi", color = Color(0xFFD0BCFF))
+                Text(stringResource(R.string.back), color = Color(0xFFD0BCFF))
             }
-            Text("Selectează nivelul", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
+            Text(stringResource(R.string.select_level), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
         }
         
         LazyVerticalGrid(
@@ -354,7 +363,7 @@ fun LevelSelectScreen(modifier: Modifier = Modifier, prefs: android.content.Shar
                                 fontSize = 10.sp
                             )
                         } else {
-                            Text("🔒", fontSize = 24.sp)
+                            Text(stringResource(R.string.level_locked), fontSize = 24.sp)
                         }
                     }
                 }
@@ -368,7 +377,9 @@ fun SettingsDialog(
     onDismiss: () -> Unit,
     isAdFree: Boolean,
     onRemoveAds: () -> Unit,
-    onRestorePurchases: () -> Unit
+    onRestorePurchases: () -> Unit,
+    adManager: AdManager,
+    rewardedHintAdProvider: RewardedHintAdProvider
 ) {
     val context = LocalContext.current
     val audioManager = remember { GameAudioManager.getInstance(context) }
@@ -378,17 +389,17 @@ fun SettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("SETĂRI", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text(stringResource(R.string.settings_upper), color = Color.White, fontWeight = FontWeight.Bold) },
         text = { 
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text("AUDIO", color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(stringResource(R.string.audio), color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text("MUZICĂ: ${(musicVolume * 100).toInt()}%", color = Color.White, fontSize = 14.sp)
+                Text(stringResource(R.string.music_volume, (musicVolume * 100).toInt()), color = Color.White, fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = if (musicVolume <= 0f) Icons.Filled.MusicOff else Icons.Filled.MusicNote, 
-                        contentDescription = "Muzică", 
+                        contentDescription = stringResource(R.string.cd_music), 
                         tint = Color(0xFFCAC4D0),
                         modifier = Modifier.size(24.dp)
                     )
@@ -402,11 +413,11 @@ fun SettingsDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text("EFECTE SONORE: ${(sfxVolume * 100).toInt()}%", color = Color.White, fontSize = 14.sp)
+                Text(stringResource(R.string.sfx_volume, (sfxVolume * 100).toInt()), color = Color.White, fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = if (sfxVolume <= 0f) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp, 
-                        contentDescription = "Efecte", 
+                        contentDescription = stringResource(R.string.cd_effects), 
                         tint = Color(0xFFCAC4D0),
                         modifier = Modifier.size(24.dp)
                     )
@@ -420,18 +431,18 @@ fun SettingsDialog(
                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("ACHIZIȚII", color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Text(stringResource(R.string.purchases), color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 if (isAdFree) {
-                    Text("Reclamele automate sunt eliminate ✓", color = Color(0xFF38E887), fontSize = 14.sp)
+                    Text(stringResource(R.string.auto_ads_removed), color = Color(0xFF38E887), fontSize = 14.sp)
                 } else {
                     Button(onClick = onRemoveAds, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                        Text("Elimină reclamele", color = Color.White)
+                        Text(stringResource(R.string.remove_ads), color = Color.White)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(onClick = onRestorePurchases, modifier = Modifier.fillMaxWidth()) {
-                        Text("Restaurează achiziția", color = Color(0xFFCAC4D0))
+                        Text(stringResource(R.string.restore_purchase), color = Color(0xFFCAC4D0))
                     }
                 }
             }
@@ -440,10 +451,10 @@ fun SettingsDialog(
             TextButton(onClick = {
                 audioManager.saveSettings()
                 onDismiss()
-            }) { Text("SALVEAZĂ ȘI ÎNAPOI LA MENIU", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+            }) { Text(stringResource(R.string.save_and_back), color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
-            TextButton(onClick = { audioManager.restoreDefaults() }) { Text("RESTAUREAZĂ VALORILE IMPLICITE", color = Color.Gray) }
+            TextButton(onClick = { audioManager.restoreDefaults() }) { Text(stringResource(R.string.restore_defaults), color = Color.Gray) }
         },
         containerColor = Color(0xFF2B2930)
     )
@@ -457,40 +468,40 @@ fun AboutScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
     ) {
         Row(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text("Înapoi", color = Color(0xFFD0BCFF))
+                Text(stringResource(R.string.back), color = Color(0xFFD0BCFF))
             }
-            Text("Despre", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
+            Text(stringResource(R.string.about_title), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
         }
         
         Text("ONE SHIFT", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp)
-        Text("Un puzzle de logică bazat pe mișcare, observație și gândire.", color = Color(0xFFCAC4D0), fontSize = 16.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 16.dp))
+        Text(stringResource(R.string.about_description), color = Color(0xFFCAC4D0), fontSize = 16.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 16.dp))
         
         Spacer(modifier = Modifier.height(24.dp))
         
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
-            Text("CUM SE JOACĂ", color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(stringResource(R.string.how_to_play), color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Glisează rândurile și coloanele pentru a reconstrui modelul afișat. Piesele care ies printr-o margine reapar prin partea opusă.", color = Color.White, fontSize = 14.sp)
+            Text(stringResource(R.string.how_to_play_text), color = Color.White, fontSize = 14.sp)
             
             Spacer(modifier = Modifier.height(24.dp))
-            Text("OBIECTIV", color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(stringResource(R.string.objective), color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Rezolvă fiecare nivel în cât mai puține mutări și obține până la cinci stele.", color = Color.White, fontSize = 14.sp)
+            Text(stringResource(R.string.objective_text), color = Color.White, fontSize = 14.sp)
             
             Spacer(modifier = Modifier.height(24.dp))
-            Text("STĂPÂNEȘTE FIECARE NIVEL", color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text(stringResource(R.string.master_each_level), color = Color(0xFFD0BCFF), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Poți rejuca orice nivel deblocat pentru a-ți îmbunătăți recordul și numărul de stele.", color = Color.White, fontSize = 14.sp)
+            Text(stringResource(R.string.master_each_level_text), color = Color.White, fontSize = 14.sp)
         }
         
         Spacer(modifier = Modifier.weight(1f))
         
-        Text("Versiunea 1.0", color = Color.Gray, fontSize = 12.sp)
-        Text("Creat în România", color = Color.Gray, fontSize = 12.sp)
+        Text(stringResource(R.string.version_text), color = Color.Gray, fontSize = 12.sp)
+        Text(stringResource(R.string.created_in_romania), color = Color.Gray, fontSize = 12.sp)
         Spacer(modifier = Modifier.height(16.dp))
         
         Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            Text("ÎNAPOI LA MENIU", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.back_to_menu), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -551,7 +562,7 @@ fun CompletionDialog(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
-                text = "Nivelul $level",
+                text = stringResource(R.string.level_text, level),
                 color = Color(0xFFD0BCFF),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -579,10 +590,10 @@ fun CompletionDialog(
                 }
             }
 
-            Text("Mutări folosite: $movesUsed", color = Color.White, fontSize = 14.sp)
-            Text("Mutări recomandate: $recommendedMoves", color = Color.Gray, fontSize = 14.sp)
+            Text(stringResource(R.string.moves_used, movesUsed), color = Color.White, fontSize = 14.sp)
+            Text(stringResource(R.string.recommended_moves, recommendedMoves), color = Color.Gray, fontSize = 14.sp)
             if (bestMoves > 0) {
-                Text("Cel mai bun rezultat: $bestMoves", color = Color(0xFF38E887), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.best_score, bestMoves), color = Color(0xFF38E887), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
             }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -592,7 +603,7 @@ fun CompletionDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF)),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
-                Text("NIVELUL URMĂTOR", color = Color(0xFF381E72), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(stringResource(R.string.next_level), color = Color(0xFF381E72), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
             Spacer(modifier = Modifier.height(12.dp))
             Button(
@@ -600,30 +611,45 @@ fun CompletionDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)),
                 modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Text("REIA NIVELUL", color = Color.White)
+                Text(stringResource(R.string.replay_level), color = Color.White)
             }
             Spacer(modifier = Modifier.height(12.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 TextButton(onClick = onMenu) {
-                    Text("MENIU PRINCIPAL", color = Color(0xFFCAC4D0), fontSize = 12.sp)
+                    Text(stringResource(R.string.main_menu), color = Color(0xFFCAC4D0), fontSize = 12.sp)
                 }
                 TextButton(onClick = onSettings) {
-                    Text("SETĂRI", color = Color(0xFFCAC4D0), fontSize = 12.sp)
+                    Text(stringResource(R.string.settings_upper), color = Color(0xFFCAC4D0), fontSize = 12.sp)
                 }
             }
         }
     }
 }
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
+
+    
+
     private lateinit var billingRepository: BillingRepository
+    lateinit var adManager: AdManager
+    lateinit var rewardedHintAdProvider: RewardedHintAdProvider
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        
         val prefs = getSharedPreferences("OneShiftPrefs", Context.MODE_PRIVATE)
+        val languageSet = prefs.getBoolean("language_set", false)
+        if (!languageSet) {
+            androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(androidx.core.os.LocaleListCompat.forLanguageTags("en"))
+            prefs.edit().putBoolean("language_set", true).apply()
+        }
+
         billingRepository = BillingRepositoryFactory.create(this, prefs)
+        adManager = AdManager(this)
+        adManager.initialize(this)
+        rewardedHintAdProvider = AdMobRewardedHintAdProvider(this, adManager)
         
         GameAudioManager.getInstance(this)
 
@@ -637,6 +663,9 @@ class MainActivity : ComponentActivity() {
                 var currentScreen by remember { mutableStateOf(ScreenState.MENU) }
                 var gameLevel by remember { mutableIntStateOf(prefs.getInt("max_unlocked_level", 1)) }
                 var showSettings by remember { mutableStateOf(false) }
+
+    
+
                 val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
                 LaunchedEffect(Unit) {
@@ -692,7 +721,7 @@ class MainActivity : ComponentActivity() {
                             onRemoveAds = { billingRepository.initiatePurchaseFlow(this@MainActivity) },
                             onSettings = { showSettings = true },
                             onAbout = { currentScreen = ScreenState.ABOUT },
-                            onExitApp = { this@MainActivity.finishAndRemoveTask() },
+                            onExitApp = { this@MainActivity.finish() },
                             isAdFree = isAdFree
                         )
                         ScreenState.LEVEL_SELECT -> LevelSelectScreen(
@@ -711,7 +740,9 @@ class MainActivity : ComponentActivity() {
                             onBackToMenu = { currentScreen = ScreenState.MENU },
                             isAdFree = isAdFree,
                             onRemoveAds = { billingRepository.initiatePurchaseFlow(this@MainActivity) },
-                            onRestorePurchases = { billingRepository.restorePurchases() }
+                            onRestorePurchases = { billingRepository.restorePurchases() },
+                            adManager = adManager,
+                            rewardedHintAdProvider = rewardedHintAdProvider
                         )
                         ScreenState.ABOUT -> AboutScreen(
                             modifier = Modifier.padding(innerPadding),
@@ -727,7 +758,9 @@ class MainActivity : ComponentActivity() {
                                 showSettings = false
                                 billingRepository.initiatePurchaseFlow(this@MainActivity)
                             },
-                            onRestorePurchases = { billingRepository.restorePurchases() }
+                            onRestorePurchases = { billingRepository.restorePurchases() },
+                            adManager = adManager,
+                            rewardedHintAdProvider = rewardedHintAdProvider
                         )
                     }
                     
@@ -751,10 +784,10 @@ class MainActivity : ComponentActivity() {
                         is BillingUiState.Success -> {
                             AlertDialog(
                                 onDismissRequest = { billingRepository.clearUiState() },
-                                title = { Text("Succes", color = Color.White) },
+                                title = { Text(stringResource(R.string.success), color = Color.White) },
                                 text = { Text(state.message, color = Color.White) },
                                 confirmButton = {
-                                    TextButton(onClick = { billingRepository.clearUiState() }) { Text("OK", color = Color(0xFFD0BCFF)) }
+                                    TextButton(onClick = { billingRepository.clearUiState() }) { Text(stringResource(R.string.ok), color = Color(0xFFD0BCFF)) }
                                 },
                                 containerColor = Color(0xFF2B2930)
                             )
@@ -762,10 +795,10 @@ class MainActivity : ComponentActivity() {
                         is BillingUiState.Error -> {
                             AlertDialog(
                                 onDismissRequest = { billingRepository.clearUiState() },
-                                title = { Text("Eroare", color = Color.White) },
+                                title = { Text(stringResource(R.string.error), color = Color.White) },
                                 text = { Text(state.message, color = Color.White) },
                                 confirmButton = {
-                                    TextButton(onClick = { billingRepository.clearUiState() }) { Text("OK", color = Color(0xFFD0BCFF)) }
+                                    TextButton(onClick = { billingRepository.clearUiState() }) { Text(stringResource(R.string.ok), color = Color(0xFFD0BCFF)) }
                                 },
                                 containerColor = Color(0xFF2B2930)
                             )
@@ -782,7 +815,7 @@ class MainActivity : ComponentActivity() {
                                             Text(benefit, color = Color.White, fontSize = 14.sp, modifier = Modifier.padding(bottom = 4.dp))
                                         }
                                         Spacer(modifier = Modifier.height(16.dp))
-                                        Text("Preț: ${state.price}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                                        Text(stringResource(R.string.price_text, state.price), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                     }
                                 },
                                 confirmButton = {
@@ -793,10 +826,10 @@ class MainActivity : ComponentActivity() {
                                         } else if (billingRepository is PlayBillingRepository) {
                                             (billingRepository as PlayBillingRepository).launchActualPurchaseFlow(this@MainActivity)
                                         }
-                                    }) { Text("CUMPĂRĂ", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+                                    }) { Text(stringResource(R.string.buy), color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
                                 },
                                 dismissButton = {
-                                    TextButton(onClick = { billingRepository.clearUiState() }) { Text("ANULEAZĂ", color = Color.Gray) }
+                                    TextButton(onClick = { billingRepository.clearUiState() }) { Text(stringResource(R.string.cancel), color = Color.Gray) }
                                 },
                                 containerColor = Color(0xFF2B2930)
                             )
@@ -832,7 +865,9 @@ fun GameScreen(
     onBackToMenu: () -> Unit,
     isAdFree: Boolean,
     onRemoveAds: () -> Unit,
-    onRestorePurchases: () -> Unit
+    onRestorePurchases: () -> Unit,
+    adManager: AdManager,
+    rewardedHintAdProvider: RewardedHintAdProvider
 ) {
     var currentLevel by remember(initialLevel) { mutableIntStateOf(initialLevel) }
 
@@ -844,10 +879,32 @@ fun GameScreen(
     var currentSolutionPath by remember { mutableStateOf(puzzleData.solutionMoves) }
     var levelFinished by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    var showExitDialog by remember { mutableStateOf(false) }
+
+    
+
+    var showExitDialog by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+    val isAppInForeground = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+    
+    val isActive = !levelFinished && !showExitDialog && !showSettings && isAppInForeground && !adManager.isAdShowing
+
+    DisposableEffect(isActive) {
+        if (isActive) {
+            adManager.startTracking()
+        } else {
+            adManager.stopTracking()
+        }
+        onDispose {
+            adManager.stopTracking()
+        }
+    }
+
     var isAdLoading by remember { mutableStateOf(false) }
     
     var inputLocked by remember { mutableStateOf(false) }
+    val canAcceptGameInput = !inputLocked && !showExitDialog && !showSettings && !adManager.isAdShowing && !levelFinished
     var replayCount by remember { mutableIntStateOf(0) }
 
     val context = LocalContext.current
@@ -903,14 +960,9 @@ fun GameScreen(
         else -> null
     }
 
-    BackHandler(enabled = !levelFinished) {
-        if (showExitDialog) {
-            showExitDialog = false
-            inputLocked = false
-        } else {
-            showExitDialog = true
-            inputLocked = true
-        }
+    BackHandler(enabled = !levelFinished && !showExitDialog) {
+        showExitDialog = true
+        inputLocked = true
     }
 
     LaunchedEffect(showHint) {
@@ -946,19 +998,26 @@ fun GameScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Box(modifier = Modifier.height(4.dp).width(48.dp).background(Color(0xFFD0BCFF)))
                 }
-                TextButton(
-                    onClick = {
-                        showExitDialog = true
-                        inputLocked = true
-                    },
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    LanguageSelector(
+                        enabled = !showExitDialog && !levelFinished,
+                        onLanguageChangeStarted = { inputLocked = true },
+                        onLanguageChangeEnded = { inputLocked = false }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            showExitDialog = true
+                            inputLocked = true
+                        },
                     colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFCAC4D0))
                 ) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Ieșire Joc", modifier = Modifier.size(20.dp))
+                    Icon(imageVector = Icons.AutoMirrored.Filled.ExitToApp, contentDescription = stringResource(R.string.cd_exit_game), modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("IEȘIRE JOC", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.exit_game), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
                 }
             }
-
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -969,13 +1028,13 @@ fun GameScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Nivelul $currentLevel",
+                        text = stringResource(R.string.level_text, currentLevel),
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Mutări: $movesCount / ${puzzleData.config.moves}",
+                        text = stringResource(R.string.moves_text, "$movesCount / ${puzzleData.config.moves}"),
                         color = Color(0xFFCAC4D0),
                         fontSize = 14.sp
                     )
@@ -983,7 +1042,7 @@ fun GameScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "MODEL",
+                    text = stringResource(R.string.model),
                     color = Color(0xFFD0BCFF),
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -1017,7 +1076,7 @@ fun GameScreen(
             ) {
                 if (isTutorial && !isSolved) {
                     Text(
-                        text = "Glisează rândul indicat pentru a reface modelul",
+                        text = stringResource(R.string.tutorial_swipe_row),
                         color = Color(0xFFD0BCFF),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
@@ -1025,7 +1084,7 @@ fun GameScreen(
                     )
                 } else if (!isSolved) {
                     Text(
-                        text = "GLISEAZĂ PENTRU A REFACE MODELUL",
+                        text = stringResource(R.string.swipe_to_recreate_upper),
                         color = Color(0xFFCAC4D0),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
@@ -1050,7 +1109,7 @@ fun GameScreen(
                                 board = playerBoard,
                                 pieceSize = pieceSize,
                                 spacing = spacing,
-                                interactable = !isSolved && !inputLocked,
+                                interactable = !isSolved && canAcceptGameInput,
                                 onShiftRow = { row, dir ->
                                     playerBoard = shiftRow(playerBoard, row, dir)
                                     movesCount++
@@ -1066,7 +1125,7 @@ fun GameScreen(
                                     showHint = false
                                 },
                                 hintMove = hintMove,
-                                isInputLocked = inputLocked,
+                                isInputLocked = !canAcceptGameInput,
                                 onInputLockedChange = { inputLocked = it },
                                 onAnimationStart = { audioManager.playSlide() }
                             )
@@ -1092,9 +1151,9 @@ fun GameScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)),
                             modifier = Modifier.weight(1f).height(48.dp),
-                            enabled = !inputLocked
+                            enabled = canAcceptGameInput
                         ) {
-                            Text("Reset", color = Color.White)
+                            Text(stringResource(R.string.reset), color = Color.White)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                         Button(
@@ -1119,7 +1178,7 @@ fun GameScreen(
                                         val activity = context as? android.app.Activity
                                         if (activity != null && !isAdLoading) {
                                             isAdLoading = true
-                                            FakeRewardedHintAdProvider().loadAndShow(
+                                            rewardedHintAdProvider.loadAndShow(
                                                 activity,
                                                 onReward = { 
                                                     hintRepository.addRewardedAdHint()
@@ -1133,16 +1192,16 @@ fun GameScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)),
                             modifier = Modifier.weight(1f).height(48.dp),
-                            enabled = !inputLocked && !isAdLoading && !showHint && !isCalculatingHint,
+                            enabled = canAcceptGameInput && !isAdLoading && !showHint && !isCalculatingHint,
                             contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                                 if (showHint) {
                                     Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("INDICIU...", color = Color.White, fontSize = 11.sp, textAlign = TextAlign.Center)
+                                    Text(stringResource(R.string.hint_button), color = Color.White, fontSize = 11.sp, textAlign = TextAlign.Center)
                                 } else if (isAdLoading || isCalculatingHint) {
-                                    Text("SE ÎNCARCĂ...", color = Color.White, fontSize = 11.sp, textAlign = TextAlign.Center)
+                                    Text(stringResource(R.string.loading), color = Color.White, fontSize = 11.sp, textAlign = TextAlign.Center)
                                 } else {
                                     if (currentLevel <= 5 || hintState.totalHints > 0) {
                                         Icon(Icons.Filled.Lightbulb, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(16.dp))
@@ -1178,7 +1237,13 @@ fun GameScreen(
                 movesUsed = movesCount,
                 recommendedMoves = puzzleData.config.moves,
                 bestMoves = getLevelMinMoves(prefs, currentLevel),
-                onNextLevel = { currentLevel++ },
+                onNextLevel = {
+                    adManager.showPendingInterstitialIfAny(
+                        activity = context as android.app.Activity,
+                        isAdFree = isAdFree,
+                        onFinished = { currentLevel++ }
+                    )
+                },
                 onReplay = {
                     playerBoard = puzzleData.initialPlayerBoard
                     movesCount = 0
@@ -1199,30 +1264,51 @@ fun GameScreen(
                 onDismiss = { showSettings = false },
                 isAdFree = isAdFree,
                 onRemoveAds = onRemoveAds,
-                onRestorePurchases = onRestorePurchases
+                onRestorePurchases = onRestorePurchases,
+                adManager = adManager,
+                rewardedHintAdProvider = rewardedHintAdProvider
             )
         }
 
+        var isProcessingExit by remember { mutableStateOf(false) }
         if (showExitDialog) {
             AlertDialog(
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnClickOutside = false,
+                    dismissOnBackPress = false
+                ),
                 onDismissRequest = { 
-                    showExitDialog = false
-                    inputLocked = false
+                    // Do nothing here because we want explicit button press
                 },
-                title = { Text("Ești sigur?", color = Color.White, fontWeight = FontWeight.Bold) },
-                text = { Text("Vei pierde mutările făcute în această încercare. Nivelurile terminate, stelele și recordurile rămân salvate.", color = Color.Gray) },
+                title = { Text(stringResource(R.string.are_you_sure), color = Color.White, fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(R.string.are_you_sure_text), color = Color.Gray) },
                 confirmButton = {
-                    TextButton(onClick = { 
-                        showExitDialog = false
-                        inputLocked = false
-                        onBackToMenu()
-                    }) { Text("DA, IEȘI", color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
+                    
+                    TextButton(
+                        enabled = !isProcessingExit,
+                        onClick = { 
+                            if (!isProcessingExit) {
+                                isProcessingExit = true
+                                adManager.showPendingInterstitialIfAny(
+                                    activity = context as android.app.Activity,
+                                    isAdFree = isAdFree,
+                                    onFinished = {
+                                        showExitDialog = false
+                                        inputLocked = false
+                                        onBackToMenu()
+                                    }
+                                )
+                            }
+                        }
+                    ) { Text(stringResource(R.string.yes_exit), color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { 
+                    TextButton(
+                        enabled = !isProcessingExit,
+                        onClick = { 
                         showExitDialog = false
                         inputLocked = false
-                    }) { Text("REVENIRE ÎN JOC", color = Color.Gray) }
+                    }) { Text(stringResource(R.string.return_to_game), color = Color.Gray) }
                 },
                 containerColor = Color(0xFF2B2930)
             )
@@ -1465,6 +1551,73 @@ fun GamePiece(piece: PieceType, size: Dp) {
             text = piece.symbol,
             fontSize = if (isSmall) 12.sp else (size.value * 0.4f).sp,
             color = Color(0xFFE6E1E5)
+        )
+    }
+}
+
+@Composable
+fun LanguageSelector(
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onLanguageChangeStarted: () -> Unit,
+    onLanguageChangeEnded: () -> Unit
+) {
+    val currentConfig = androidx.compose.ui.platform.LocalConfiguration.current
+    val currentLang = currentConfig.locales.get(0)?.language ?: "en"
+    var showDialog by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Button(
+            onClick = { 
+                showDialog = true 
+                onLanguageChangeStarted()
+            },
+            enabled = enabled,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)),
+            shape = RoundedCornerShape(50),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+        ) {
+            Text("🌐 ${currentLang.uppercase()}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                // Do nothing
+            },
+            title = null,
+            text = {
+                Column {
+                    val languages = listOf("en" to "English", "ro" to "Română", "es" to "Español", "it" to "Italiano")
+                    languages.forEach { (code, name) ->
+                        TextButton(
+                            onClick = {
+                                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(androidx.core.os.LocaleListCompat.forLanguageTags(code))
+                                showDialog = false
+                                onLanguageChangeEnded()
+                            },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(name, color = Color.White, fontSize = 18.sp, fontWeight = if (code == currentLang) FontWeight.Bold else FontWeight.Normal)
+                                if (code == currentLang) Text("✓", color = Color(0xFF38E887), fontSize = 18.sp)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showDialog = false 
+                    onLanguageChangeEnded()
+                }) {
+                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                }
+            },
+            containerColor = Color(0xFF2B2930),
+            properties = androidx.compose.ui.window.DialogProperties(dismissOnClickOutside = false, dismissOnBackPress = false)
         )
     }
 }

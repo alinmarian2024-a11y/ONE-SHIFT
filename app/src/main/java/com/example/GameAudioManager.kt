@@ -14,11 +14,7 @@ import java.io.FileOutputStream
 import kotlin.math.sin
 
 class GameAudioManager private constructor(baseContext: Context) {
-    private val context = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        baseContext.createAttributionContext("GameAudio")
-    } else {
-        baseContext
-    }
+    private val context = baseContext
 
     private val prefs = context.getSharedPreferences("OneShiftPrefs", Context.MODE_PRIVATE)
 
@@ -36,13 +32,16 @@ class GameAudioManager private constructor(baseContext: Context) {
     private var solveSoundId = -1
     
     init {
-        initSoundPool()
-        initMediaPlayer()
+
+        
+
+        initSoundPool(context)
+        initMediaPlayer(context)
     }
 
-    private fun initSoundPool() {
+    private fun initSoundPool(context: Context) {
         val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setUsage(AudioAttributes.USAGE_GAME)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
         soundPool = SoundPool.Builder()
@@ -54,14 +53,14 @@ class GameAudioManager private constructor(baseContext: Context) {
         solveSoundId = soundPool?.load(generateSolveWav(context).absolutePath, 1) ?: -1
     }
 
-    private fun initMediaPlayer() {
+    private fun initMediaPlayer(context: Context) {
         try {
             val musicWav = generateAmbientWav(context)
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(context, android.net.Uri.fromFile(musicWav))
                 setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setUsage(AudioAttributes.USAGE_GAME)
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build()
                 )
