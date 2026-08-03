@@ -2,10 +2,10 @@ import os
 import xml.etree.ElementTree as ET
 
 strings_map = {
-    'values': {'hint_count': 'Hint • %1$d'},
-    'values-ro': {'hint_count': 'Indiciu • %1$d'},
-    'values-es': {'hint_count': 'Pista • %1$d'},
-    'values-it': {'hint_count': 'Suggerimento • %1$d'}
+    'values': {'no_moves_reset': 'No guaranteed move available. Use Reset!'},
+    'values-ro': {'no_moves_reset': 'Nu există o mutare garantată. Folosește Reset!'},
+    'values-es': {'no_moves_reset': 'No hay movimiento garantizado. ¡Usa Reiniciar!'},
+    'values-it': {'no_moves_reset': 'Nessuna mossa garantita. Usa Reset!'}
 }
 
 for val_dir, strings in strings_map.items():
@@ -16,7 +16,6 @@ for val_dir, strings in strings_map.items():
     root = tree.getroot()
     
     for name, value in strings.items():
-        # check if exists
         exists = False
         for child in root:
             if child.attrib.get('name') == name:

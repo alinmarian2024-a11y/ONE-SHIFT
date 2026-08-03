@@ -265,6 +265,12 @@ fun MainMenuScreen(
     }
 
     Box(modifier = modifier.fillMaxSize().background(Color(0xFF1C1B1F))) {
+        LanguageSelector(
+            modifier = Modifier.align(Alignment.TopEnd).padding(16.dp),
+            enabled = !showExitAppDialog && !showNewGameDialog,
+            onLanguageChangeStarted = {},
+            onLanguageChangeEnded = {}
+        )
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -911,6 +917,7 @@ fun GameScreen(
     val audioManager = remember { GameAudioManager.getInstance(context) }
     
     val hintRepository = remember { HintRepository.getInstance(context) }
+    val noMovesResetMsg = stringResource(R.string.no_moves_reset)
     val hintState by hintRepository.hintState.collectAsState()
 
     val boardSize = puzzleData.config.size
@@ -1162,7 +1169,7 @@ fun GameScreen(
                                     if (actualHintMove != null) {
                                         showHint = true
                                     } else {
-                                        HintEventBus.emitEvent("Nu există o mutare garantată. Folosește Reset!")
+                                        HintEventBus.emitEvent(noMovesResetMsg)
                                     }
                                 } else {
                                     if (hintState.totalHints > 0) {
@@ -1171,7 +1178,7 @@ fun GameScreen(
                                                 hintRepository.consumeHint()
                                                 showHint = true
                                             } else {
-                                                HintEventBus.emitEvent("Nu există o mutare garantată. Folosește Reset!")
+                                                HintEventBus.emitEvent(noMovesResetMsg)
                                             }
                                         }
                                     } else {
@@ -1212,11 +1219,11 @@ fun GameScreen(
                                     }
                                     
                                     val text = if (currentLevel <= 5) {
-                                        "INDICIU GRATUIT"
+                                        stringResource(R.string.free_hint).uppercase()
                                     } else if (hintState.totalHints > 0) {
-                                        "INDICIU • ${hintState.totalHints}"
+                                        stringResource(R.string.hint_count, hintState.totalHints).uppercase()
                                     } else {
-                                        "VEZI VIDEO • +1 INDICIU"
+                                        stringResource(R.string.watch_video_hint).uppercase()
                                     }
                                     Text(text, color = Color.White, fontSize = 11.sp, textAlign = TextAlign.Center, maxLines = 1)
                                 }

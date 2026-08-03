@@ -1,7 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">ONE SHIFT</string>
-    <string name="empty"></string>
+    <string name="empty" />
     <string name="exit_game_dialog_title">Exit Game?</string>
     <string name="exit_game_dialog_text">Your progress and settings are saved automatically.</string>
     <string name="yes_exit">YES, EXIT</string>
@@ -91,4 +91,6 @@
     <string name="ads_removed_permanently">Automatic ads have been permanently removed!</string>
     <string name="purchase_pending">Purchase pending</string>
     <string name="test_price">TEST PRICE</string>
+    <string name="hint_count">Hint • %1$d</string>
+    <string name="no_moves_reset">No guaranteed move available. Use Reset!</string>
 </resources>
