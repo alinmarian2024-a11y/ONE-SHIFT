@@ -1,8 +1,10 @@
-import re
-with open("app/src/main/AndroidManifest.xml", "r") as f:
-    text = f.read()
+with open('app/src/main/AndroidManifest.xml', 'r') as f:
+    content = f.read()
 
-text = text.replace("    <uses-permission android:name=\"android.permission.INTERNET\" />", "    <uses-permission android:name=\"android.permission.INTERNET\" />\n    <attribution android:tag=\"@string/empty\" android:label=\"@string/app_name\" />")
+meta_tag = '\n        <meta-data\n            android:name="com.google.android.gms.ads.APPLICATION_ID"\n            android:value="ca-app-pub-3940256099942544~3347511713"/>\n'
 
-with open("app/src/main/AndroidManifest.xml", "w") as f:
-    f.write(text)
+if 'com.google.android.gms.ads.APPLICATION_ID' not in content:
+    content = content.replace('<application', '<application' + meta_tag)
+
+with open('app/src/main/AndroidManifest.xml', 'w') as f:
+    f.write(content)

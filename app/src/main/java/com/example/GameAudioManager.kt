@@ -41,7 +41,7 @@ class GameAudioManager private constructor(baseContext: Context) {
 
     private fun initSoundPool(context: Context) {
         val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_GAME)
+            .setUsage(AudioAttributes.USAGE_MEDIA)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .build()
         soundPool = SoundPool.Builder()
@@ -60,7 +60,7 @@ class GameAudioManager private constructor(baseContext: Context) {
                 setDataSource(context, android.net.Uri.fromFile(musicWav))
                 setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_GAME)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build()
                 )
