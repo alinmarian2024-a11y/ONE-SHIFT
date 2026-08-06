@@ -211,7 +211,8 @@ fun MainMenuScreen(
     onSettings: () -> Unit,
     onAbout: () -> Unit,
     onExitApp: () -> Unit,
-    isAdFree: Boolean
+    isAdFree: Boolean,
+    hasCampaign: Boolean
 ) {
     var showNewGameDialog by remember { mutableStateOf(false) }
     var showExitAppDialog by remember { mutableStateOf(false) }
@@ -266,11 +267,24 @@ fun MainMenuScreen(
             Box(modifier = Modifier.height(6.dp).width(80.dp).background(Color(0xFFD0BCFF)).padding(bottom = 64.dp))
             Spacer(modifier = Modifier.height(48.dp))
         
-        Button(onClick = onContinue, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF)), modifier = Modifier.fillMaxWidth().height(64.dp)) {
-            Text("CONTINUĂ", color = Color(0xFF381E72), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        if (hasCampaign) {
+            Button(onClick = onContinue, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF)), modifier = Modifier.fillMaxWidth().height(64.dp)) {
+                Text("CONTINUĂ", color = Color(0xFF381E72), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = { showNewGameDialog = true }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), modifier = Modifier.fillMaxWidth().height(56.dp)) {
+        
+        Button(
+            onClick = { 
+                if (hasCampaign) {
+                    showNewGameDialog = true 
+                } else {
+                    onNewGame()
+                }
+            }, 
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF49454F)), 
+            modifier = Modifier.fillMaxWidth().height(56.dp)
+        ) {
             Text("JOC NOU", color = Color.White, fontSize = 16.sp)
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -647,6 +661,12 @@ class MainActivity : ComponentActivity() {
                 var currentScreen by remember { mutableStateOf(ScreenState.MENU) }
                 var gameLevel by remember { mutableIntStateOf(prefs.getInt("max_unlocked_level", 1)) }
                 var showSettings by remember { mutableStateOf(false) }
+                var hasCampaign by remember { 
+                    mutableStateOf(
+                        prefs.getBoolean("campaign_started", false) ||
+                        prefs.getInt("max_unlocked_level", 1) > 1
+                    )
+                }
 
     
 
@@ -666,7 +686,8 @@ class MainActivity : ComponentActivity() {
                         ScreenState.MENU -> MainMenuScreen(
                             modifier = Modifier.padding(innerPadding),
                             onContinue = {
-                                gameLevel = prefs.getInt("max_unlocked_level", 1)
+                                val maxUnlocked = prefs.getInt("max_unlocked_level", 1)
+                                gameLevel = prefs.getInt("last_played_level", maxUnlocked).coerceIn(1, maxUnlocked)
                                 currentScreen = ScreenState.GAME
                             },
                             onNewGame = {
@@ -696,8 +717,11 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                                editor.putBoolean("campaign_started", true)
+                                editor.putInt("last_played_level", 1)
                                 editor.apply()
                                 
+                                hasCampaign = true
                                 gameLevel = 1
                                 currentScreen = ScreenState.GAME
                             },
@@ -706,12 +730,18 @@ class MainActivity : ComponentActivity() {
                             onSettings = { showSettings = true },
                             onAbout = { currentScreen = ScreenState.ABOUT },
                             onExitApp = { this@MainActivity.finishAndRemoveTask() },
-                            isAdFree = isAdFree
+                            isAdFree = isAdFree,
+                            hasCampaign = hasCampaign
                         )
                         ScreenState.LEVEL_SELECT -> LevelSelectScreen(
                             modifier = Modifier.padding(innerPadding),
                             prefs = prefs,
                             onLevelClick = { level ->
+                                prefs.edit()
+                                    .putBoolean("campaign_started", true)
+                                    .putInt("last_played_level", level)
+                                    .apply()
+                                hasCampaign = true
                                 gameLevel = level
                                 currentScreen = ScreenState.GAME
                             },
@@ -914,6 +944,11 @@ fun GameScreen(
 
 
     LaunchedEffect(currentLevel) {
+        prefs.edit()
+            .putBoolean("campaign_started", true)
+            .putInt("last_played_level", currentLevel)
+            .apply()
+            
         puzzleData = generatePuzzle(currentLevel)
         playerBoard = puzzleData.initialPlayerBoard
         currentSolutionPath = puzzleData.solutionMoves
