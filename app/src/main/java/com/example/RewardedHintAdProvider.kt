@@ -14,7 +14,7 @@ class FakeRewardedHintAdProvider : RewardedHintAdProvider {
     override fun loadAndShow(activity: Activity, onReward: () -> Unit, onFailedOrClosed: () -> Unit) {
         if (com.example.BuildConfig.DEBUG) {
             // Show a mock toast/overlay
-            android.widget.Toast.makeText(activity, "RECLAMĂ TEST (3s)", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(activity, activity.getString(R.string.test_ad), android.widget.Toast.LENGTH_SHORT).show()
             
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 onReward()

@@ -37,7 +37,7 @@ class AdManager(private val context: Context) {
     private var sessionStartTimeMs: Long = 0
     private var isTracking = false
 
-    private val THRESHOLD_MS = 13 * 60 * 1000L // 13 minutes
+    private val THRESHOLD_MS = 10 * 60 * 1000L // 10 minutes
 
     fun initialize(activity: Activity) {
         val params = ConsentRequestParameters.Builder()
@@ -161,7 +161,7 @@ class AdManager(private val context: Context) {
     }
 
     fun onRewardedAdShown() {
-        // "After any rewarded video is shown, restart the 13-minute interstitial cooldown to prevent back-to-back full-screen ads."
+        // "After any rewarded video is shown, restart the 10-minute interstitial cooldown to prevent back-to-back full-screen ads."
         accumulatedActiveTimeMs = 0
         interstitialPending = false
         // Reload interstitial if we consumed it or if we just want to be sure it's ready

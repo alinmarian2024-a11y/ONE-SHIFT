@@ -53,24 +53,66 @@ class GameAudioManager private constructor(baseContext: Context) {
         solveSoundId = soundPool?.load(generateSolveWav(context).absolutePath, 1) ?: -1
     }
 
+    private var currentMusicResId: Int = R.raw.menu_theme
+    private val gameplayTracks = listOf(R.raw.gameplay_track_01, R.raw.gameplay_track_02, R.raw.gameplay_track_03)
+    private var currentGameplayTrackIndex = 0
+    private var isPlayingGameplay = false
+
     private fun initMediaPlayer(context: Context) {
+        playMenuTheme()
+    }
+
+    private fun playMusic(resId: Int, loop: Boolean = true) {
         try {
-            val musicWav = generateAmbientWav(context)
+            mediaPlayer?.release()
             mediaPlayer = MediaPlayer().apply {
-                setDataSource(context, android.net.Uri.fromFile(musicWav))
+                val afd = context.resources.openRawResourceFd(resId)
+                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                afd.close()
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build()
                 )
-                isLooping = true
+                isLooping = loop
                 setVolume(_musicVolume.value, _musicVolume.value)
+                if (!loop) {
+                    setOnCompletionListener {
+                        playNextGameplayTrack()
+                    }
+                }
                 prepare()
-                start()
+                if (_musicVolume.value > 0f && isAppInForeground) {
+                    start()
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    private fun playNextGameplayTrack() {
+        if (!isPlayingGameplay) return
+        currentGameplayTrackIndex = (currentGameplayTrackIndex + 1) % gameplayTracks.size
+        currentMusicResId = gameplayTracks[currentGameplayTrackIndex]
+        playMusic(currentMusicResId, loop = false)
+    }
+
+    fun playMenuTheme() {
+        if (isPlayingGameplay || mediaPlayer == null) {
+            isPlayingGameplay = false
+            currentMusicResId = R.raw.menu_theme
+            playMusic(R.raw.menu_theme, loop = true)
+        }
+    }
+
+    fun playGameplayMusic() {
+        if (!isPlayingGameplay) {
+            isPlayingGameplay = true
+            currentGameplayTrackIndex = gameplayTracks.indices.random()
+            currentMusicResId = gameplayTracks[currentGameplayTrackIndex]
+            playMusic(currentMusicResId, loop = false)
         }
     }
 
@@ -78,6 +120,11 @@ class GameAudioManager private constructor(baseContext: Context) {
         val v = volume.coerceIn(0f, 1f)
         _musicVolume.value = v
         mediaPlayer?.setVolume(v, v)
+        if (v > 0f && isAppInForeground && mediaPlayer?.isPlaying == false) {
+            mediaPlayer?.start()
+        } else if (v <= 0f && mediaPlayer?.isPlaying == true) {
+            mediaPlayer?.pause()
+        }
     }
 
     fun setSfxVolume(volume: Float) {

@@ -2,6 +2,7 @@ package com.example
 
 import android.app.Activity
 import android.content.Context
+import com.example.R
 import com.android.billingclient.api.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -122,22 +123,22 @@ class PlayBillingRepository(private val context: Context, private val prefs: and
 
     override fun initiatePurchaseFlow(activity: Activity) {
         if (_isAdFree.value) {
-            _uiState.value = BillingUiState.Error("Achiziția este activă pe acest cont Google Play")
+            _uiState.value = BillingUiState.Error(context.getString(R.string.purchase_active))
             return
         }
 
         val details = productDetails
         val benefitsList = listOf(
-            "• Fără bannere",
-            "• Fără reclame între niveluri",
-            "• Achiziție permanentă",
-            "• Restaurare automată pe același cont Google Play"
+            context.getString(R.string.benefit_1),
+            context.getString(R.string.benefit_2),
+            context.getString(R.string.benefit_3),
+            context.getString(R.string.benefit_4)
         )
         if (details != null) {
             val price = details.oneTimePurchaseOfferDetails?.formattedPrice ?: "N/A"
             _uiState.value = BillingUiState.PurchaseDialog(
-                title = "Joacă fără întreruperi",
-                description = "Elimină permanent bannerele și reclamele afișate automat. Este o singură plată, fără abonament.",
+                title = context.getString(R.string.purchase_title),
+                description = context.getString(R.string.purchase_desc),
                 benefits = benefitsList,
                 price = price
             )
@@ -153,7 +154,7 @@ class PlayBillingRepository(private val context: Context, private val prefs: and
             //     .build()
             // billingClient.launchBillingFlow(activity, billingFlowParams)
         } else {
-            _uiState.value = BillingUiState.Error("Produs indisponibil momentan")
+            _uiState.value = BillingUiState.Error(context.getString(R.string.product_unavailable))
         }
     }
     
@@ -184,7 +185,7 @@ class PlayBillingRepository(private val context: Context, private val prefs: and
                 
                 if (isPurchased) {
                     updateAdFreeState(true)
-                    _uiState.value = BillingUiState.Success("Achiziție restaurată")
+                    _uiState.value = BillingUiState.Success(context.getString(R.string.purchase_restored))
                     
                     purchases.forEach { purchase ->
                         if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED && !purchase.isAcknowledged) {
@@ -192,10 +193,10 @@ class PlayBillingRepository(private val context: Context, private val prefs: and
                         }
                     }
                 } else {
-                    _uiState.value = BillingUiState.Error("Nu a fost găsită nicio achiziție")
+                    _uiState.value = BillingUiState.Error(context.getString(R.string.no_purchase_found))
                 }
             } else {
-                _uiState.value = BillingUiState.Error("Eroare la restaurarea achizițiilor")
+                _uiState.value = BillingUiState.Error(context.getString(R.string.restore_error))
             }
         }
     }
@@ -206,9 +207,9 @@ class PlayBillingRepository(private val context: Context, private val prefs: and
                 handlePurchase(purchase)
             }
         } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
-            _uiState.value = BillingUiState.Error("Cumpărare anulată")
+            _uiState.value = BillingUiState.Error(context.getString(R.string.purchase_cancelled))
         } else {
-            _uiState.value = BillingUiState.Error("Eroare la cumpărare: ${billingResult.responseCode}")
+            _uiState.value = BillingUiState.Error(context.getString(R.string.purchase_error, billingResult.responseCode))
         }
     }
 
@@ -216,14 +217,14 @@ class PlayBillingRepository(private val context: Context, private val prefs: and
         if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
             if (purchase.products.contains("remove_ads_lifetime")) {
                 updateAdFreeState(true)
-                _uiState.value = BillingUiState.Success("Reclamele automate au fost eliminate permanent!")
+                _uiState.value = BillingUiState.Success(context.getString(R.string.ads_removed_success))
             }
 
             if (!purchase.isAcknowledged) {
                 acknowledgePurchase(purchase.purchaseToken)
             }
         } else if (purchase.purchaseState == Purchase.PurchaseState.PENDING) {
-            _uiState.value = BillingUiState.Error("Achiziție în așteptare")
+            _uiState.value = BillingUiState.Error(context.getString(R.string.purchase_pending))
         }
     }
 
@@ -242,7 +243,7 @@ class PlayBillingRepository(private val context: Context, private val prefs: and
     }
 }
 
-class FakeBillingRepository(private val prefs: android.content.SharedPreferences) : BillingRepository {
+class FakeBillingRepository(private val context: Context, private val prefs: android.content.SharedPreferences) : BillingRepository {
     private val _isAdFree = MutableStateFlow(prefs.getBoolean("is_ad_free", false))
     override val isAdFree: StateFlow<Boolean> = _isAdFree.asStateFlow()
 
@@ -255,22 +256,22 @@ class FakeBillingRepository(private val prefs: android.content.SharedPreferences
 
     override fun initiatePurchaseFlow(activity: Activity) {
         if (_isAdFree.value) {
-            _uiState.value = BillingUiState.Error("Achiziția este activă pe acest cont Google Play")
+            _uiState.value = BillingUiState.Error(context.getString(R.string.purchase_active))
             return
         }
         
         val benefitsList = listOf(
-            "• Fără bannere",
-            "• Fără reclame între niveluri",
-            "• Achiziție permanentă",
-            "• Restaurare automată pe același cont Google Play"
+            context.getString(R.string.benefit_1),
+            context.getString(R.string.benefit_2),
+            context.getString(R.string.benefit_3),
+            context.getString(R.string.benefit_4)
         )
         
         _uiState.value = BillingUiState.PurchaseDialog(
-            title = "Joacă fără întreruperi",
-            description = "Elimină permanent bannerele și reclamele afișate automat. Este o singură plată, fără abonament.",
+            title = context.getString(R.string.purchase_title),
+            description = context.getString(R.string.purchase_desc),
             benefits = benefitsList,
-            price = "PREȚ TEST"
+            price = context.getString(R.string.test_price)
         )
     }
     
@@ -281,7 +282,7 @@ class FakeBillingRepository(private val prefs: android.content.SharedPreferences
             android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 _isAdFree.value = true
                 prefs.edit().putBoolean("is_ad_free", true).apply()
-                _uiState.value = BillingUiState.Success("Reclamele automate au fost eliminate permanent!")
+                _uiState.value = BillingUiState.Success(context.getString(R.string.ads_removed_success))
             }, 1500)
         }
     }
@@ -292,9 +293,9 @@ class FakeBillingRepository(private val prefs: android.content.SharedPreferences
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             if (prefs.getBoolean("is_ad_free", false)) { // Fake finding it if it was previously bought in fake
                 _isAdFree.value = true
-                _uiState.value = BillingUiState.Success("Achiziție restaurată")
+                _uiState.value = BillingUiState.Success(context.getString(R.string.purchase_restored))
             } else {
-                _uiState.value = BillingUiState.Error("Nu a fost găsită nicio achiziție")
+                _uiState.value = BillingUiState.Error(context.getString(R.string.no_purchase_found))
             }
         }, 1000)
     }
@@ -303,7 +304,7 @@ class FakeBillingRepository(private val prefs: android.content.SharedPreferences
 object BillingRepositoryFactory {
     fun create(context: Context, prefs: android.content.SharedPreferences): BillingRepository {
         return if (BuildConfig.DEBUG) {
-            FakeBillingRepository(prefs)
+            FakeBillingRepository(context, prefs)
         } else {
             PlayBillingRepository(context, prefs)
         }

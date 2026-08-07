@@ -1,6 +1,7 @@
 package com.example
 
 import android.content.Context
+import com.example.R
 import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,7 @@ data class HintState(
     val totalHints get() = dailyHintsRemaining + bonusHintsBalance
 }
 
-class HintRepository private constructor(context: Context) {
+class HintRepository private constructor(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("OneShiftPrefs", Context.MODE_PRIVATE)
     private val _hintState = MutableStateFlow(loadState())
     val hintState: StateFlow<HintState> = _hintState.asStateFlow()
@@ -81,7 +82,7 @@ class HintRepository private constructor(context: Context) {
                 )
                 saveState(newState)
                 if (increased) {
-                    HintEventBus.emitEvent("BONUS ZILNIC: AI $newDaily INDICII DISPONIBILE")
+                    HintEventBus.emitEvent(context.getString(R.string.daily_bonus, newDaily))
                 }
                 newState
             } else {
@@ -115,7 +116,7 @@ class HintRepository private constructor(context: Context) {
         _hintState.update { current ->
             val newState = current.copy(bonusHintsBalance = current.bonusHintsBalance + 1)
             saveState(newState)
-            HintEventBus.emitEvent("AI PRIMIT 1 INDICIU")
+            HintEventBus.emitEvent(context.getString(R.string.hint_received))
             newState
         }
     }
@@ -135,7 +136,7 @@ class HintRepository private constructor(context: Context) {
                     rewardedThresholds = newSet
                 )
                 saveState(newState)
-                HintEventBus.emitEvent("BONUS DE PROGRES: +3 INDICII")
+                HintEventBus.emitEvent(context.getString(R.string.progress_bonus))
                 newState
             } else {
                 current
