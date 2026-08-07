@@ -926,7 +926,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        GameAudioManager.getInstance(this).release()
     }
 }
 
