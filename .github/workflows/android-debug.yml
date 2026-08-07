@@ -22,7 +22,8 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
-
+      - name: Set up Android SDK tools
+        uses: android-actions/setup-android@v4
       - name: Configure Android SDK
         run: |
           echo "sdk.dir=$ANDROID_HOME" > local.properties
