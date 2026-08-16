@@ -30,7 +30,7 @@ object Solver {
         return null
     }
 
-    private fun findShortestPath(
+    fun findShortestPath(
         startBoard: List<List<PieceType>>,
         targetBoard: List<List<PieceType>>,
         maxDepth: Int

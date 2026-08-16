@@ -29,6 +29,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.blur
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -443,11 +445,13 @@ fun MainMenuScreen(
             }
         }
 
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
-                .padding(top = 100.dp, bottom = 24.dp),
+                .padding(top = 80.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             val titleBrush = Brush.linearGradient(
@@ -488,7 +492,6 @@ fun MainMenuScreen(
                 )
             )
             
-            Spacer(modifier = Modifier.weight(1f))
 
             Box(
                 modifier = Modifier

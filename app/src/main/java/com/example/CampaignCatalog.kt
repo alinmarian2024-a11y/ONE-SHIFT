@@ -7,15 +7,53 @@ object CampaignCatalog {
         generateCatalog()
     }
 
+    private fun canonicalPair(start: List<List<PieceType>>, target: List<List<PieceType>>): String {
+        val types = listOf(PieceType.CYAN, PieceType.VIOLET, PieceType.CORAL, PieceType.LIME)
+        
+        val permutations = mutableListOf<Map<PieceType, PieceType>>()
+        for (i in types.indices) {
+            for (j in types.indices) {
+                if (j == i) continue
+                for (k in types.indices) {
+                    if (k == i || k == j) continue
+                    for (l in types.indices) {
+                        if (l == i || l == j || l == k) continue
+                        permutations.add(
+                            mapOf(
+                                types[0] to types[i],
+                                types[1] to types[j],
+                                types[2] to types[k],
+                                types[3] to types[l]
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        
+        var bestCanonical: String? = null
+        
+        for (perm in permutations) {
+            val s = start.joinToString(";") { row -> row.joinToString(",") { perm[it]?.name ?: it.name } }
+            val t = target.joinToString(";") { row -> row.joinToString(",") { perm[it]?.name ?: it.name } }
+            val rep = "$s|$t"
+            if (bestCanonical == null || rep < bestCanonical) {
+                bestCanonical = rep
+            }
+        }
+        return bestCanonical!!
+    }
+
     private fun generateCatalog(): List<PuzzleData> {
         val result = mutableListOf<PuzzleData>()
-        val seenPairs = mutableSetOf<Pair<List<List<PieceType>>, List<List<PieceType>>>>()
+        val seenPairs = mutableSetOf<String>()
         val recentSolutions = mutableListOf<List<Move>>()
+        val allSolutions = mutableSetOf<List<Move>>()
         
         var previousCount = -1
         var consecutiveCount = 0
 
-        var masterSeed = 1000L
+        var masterSeed = 2000L
 
         for (level in 1..TOTAL_LEVELS) {
             var candidate: PuzzleData
@@ -51,22 +89,23 @@ object CampaignCatalog {
                 
                 candidate = generatePuzzleInternal(config, random)
                 
-                val pair = Pair(candidate.initialPlayerBoard, candidate.targetBoard)
-                if (seenPairs.contains(pair)) {
+                val cPair = canonicalPair(candidate.initialPlayerBoard, candidate.targetBoard)
+                if (seenPairs.contains(cPair)) {
                     continue
                 }
                 
-                if (level > 15) {
-                    var matchesRecent = false
-                    for (recentSolution in recentSolutions) {
-                        if (candidate.solutionMoves == recentSolution) {
-                            matchesRecent = true
-                            break
-                        }
-                    }
-                    if (matchesRecent) {
-                        continue
-                    }
+                // Verify true shortest path is exactly config.moves
+                val shortestPath = Solver.findShortestPath(candidate.initialPlayerBoard, candidate.targetBoard, config.moves)
+                if (shortestPath == null || shortestPath.size != config.moves) {
+                    continue
+                }
+
+                // Actually use the optimal shortest path as the solution (in case it differs from the generated one but has same length)
+                candidate = candidate.copy(solutionMoves = shortestPath)
+
+                // Reject duplicate sequences for the ENTIRE campaign
+                if (allSolutions.contains(candidate.solutionMoves)) {
+                    continue
                 }
                 
                 if (config.moves == previousCount) {
@@ -76,7 +115,8 @@ object CampaignCatalog {
                     consecutiveCount = 1
                 }
                 
-                seenPairs.add(pair)
+                seenPairs.add(cPair)
+                allSolutions.add(candidate.solutionMoves)
                 recentSolutions.add(candidate.solutionMoves)
                 if (recentSolutions.size > 5) {
                     recentSolutions.removeAt(0)
