@@ -129,6 +129,20 @@ class HintRepository private constructor(private val context: Context) {
         }
     }
 
+    fun resetForNewCampaign() {
+        _hintState.update {
+            val newState = HintState(
+                dailyHintsRemaining = 2,
+                bonusHintsBalance = 3,
+                initialBonusGranted = true,
+                lastDailyHintEpochDay = LocalDate.now().toEpochDay(),
+                rewardedThresholds = emptySet()
+            )
+            saveState(newState)
+            newState
+        }
+    }
+
     // Returns true if bonus was granted
     fun checkAndGrantThresholdBonus(level: Int, localizedContext: Context? = null): Boolean {
         if (level % 10 != 0 || level == 0) return false

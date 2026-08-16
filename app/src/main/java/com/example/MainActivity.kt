@@ -967,11 +967,6 @@ class MainActivity : ComponentActivity() {
                                     "is_ad_free",
                                     "music_volume",
                                     "sfx_volume",
-                                    "daily_hints",
-                                    "bonus_hints",
-                                    "initial_hint_bonus_granted",
-                                    "last_daily_hint_epoch_day",
-                                    "rewarded_thresholds",
                                     "app_language",
                                     "last_daily_completed_date"
                                 )
@@ -996,6 +991,8 @@ class MainActivity : ComponentActivity() {
                                 editor.putBoolean("campaign_started", true)
                                 editor.putInt("last_played_level", 1)
                                 editor.apply()
+                                
+                                HintRepository.getInstance(context).resetForNewCampaign()
                                 
                                 hasCampaign = true
                                 gameLevel = 1
