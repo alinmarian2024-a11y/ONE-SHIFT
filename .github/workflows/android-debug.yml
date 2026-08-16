@@ -1,6 +1,3 @@
-android-debug.yml
-
-
 name: Build ONE SHIFT APK
 
 on:
