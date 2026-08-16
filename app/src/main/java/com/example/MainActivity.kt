@@ -694,6 +694,10 @@ class MainActivity : ComponentActivity() {
         GameAudioManager.getInstance(this)
 
         enableEdgeToEdge()
+
+        // Force decor view and content view creation to prevent NPE in ComponentActivity.setContent on recreate
+        setContentView(android.view.View(this))
+
         setContent {
             MyApplicationTheme {
                 val context = LocalContext.current
@@ -738,9 +742,7 @@ class MainActivity : ComponentActivity() {
                             appLanguage = prefs.getString("app_language", "en") ?: "en",
                             onLanguageChanged = { newLang ->
                                 prefs.edit().putString("app_language", newLang).apply()
-                                val intent = android.content.Intent(this@MainActivity, MainActivity::class.java)
-                                startActivity(intent)
-                                finish()
+                                recreate()
                             },
                             modifier = Modifier.padding(innerPadding),
                             onContinue = {
@@ -921,11 +923,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        GameAudioManager.getInstance(this).onAppBackground()
+        if (!isChangingConfigurations) {
+            GameAudioManager.getInstance(this).onAppBackground()
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        if (!isChangingConfigurations) {
+            GameAudioManager.getInstance(this).release()
+        }
     }
 }
 

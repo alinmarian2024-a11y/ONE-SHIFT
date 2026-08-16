@@ -189,6 +189,7 @@ class GameAudioManager private constructor(baseContext: Context) {
         mediaPlayer = null
         soundPool?.release()
         soundPool = null
+        instance = null
     }
 
     companion object {

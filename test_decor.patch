@@ -1,0 +1,10 @@
+--- app/src/main/java/com/example/MainActivity.kt
++++ app/src/main/java/com/example/MainActivity.kt
+@@ -694,6 +694,7 @@
+ 
+         GameAudioManager.getInstance(this)
+         enableEdgeToEdge()
++        setContentView(android.view.View(this)) // Force installDecor
+         setContent {
+             MyApplicationTheme {
+                 val context = LocalContext.current
