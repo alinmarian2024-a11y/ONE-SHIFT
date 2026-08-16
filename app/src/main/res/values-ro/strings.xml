@@ -83,11 +83,11 @@
     <string name="level_completed">Nivel completat!</string>
     <string name="daily_bonus">BONUS ZILNIC: AI %1$d INDICII DISPONIBILE</string>
     <string name="hint_received">AI PRIMIT 1 INDICIU</string>
-    <string name="progress_bonus">BONUS DE PROGRES: +3 INDICII</string>
+    <string name="progress_bonus">ETAPĂ ATINSĂ! Ai primit +1 indiciu pentru încă 10 niveluri completate.</string>
     <string name="desc_music">Muzică</string>
     <string name="desc_sfx">Efecte</string>
     <string name="desc_exit_game">Ieșire Joc</string>
-    <string name="star_msg_5">PERFECT SHIFT! Minte ascuțită!</string>
+    <string name="star_msg_5">MUTARE PERFECTĂ!</string>
     <string name="star_msg_4">Excelent! Foarte aproape de perfect!</string>
     <string name="star_msg_3">Foarte bine! Nivel rezolvat!</string>
     <string name="star_msg_2">Ai reușit! Poți obține și mai mult!</string>
@@ -102,4 +102,22 @@
     <string name="hint_count">INDICIU • %1$d</string>
     <string name="watch_video_hint">VEZI VIDEO • +1 INDICIU</string>
     <string name="test_ad">RECLAMĂ TEST (3s)</string>
+    <string name="chapter_1">ÎNCEPUTUL</string>
+    <string name="chapter_2">DRUMUL</string>
+    <string name="chapter_3">PROVOCAREA</string>
+    <string name="chapter_4">LABIRINTUL</string>
+    <string name="chapter_5">ILUZIA</string>
+    <string name="chapter_6">MĂIESTRIA</string>
+    <string name="level_progress">Nivel %1$d/%2$d</string>
+    <string name="perfect_streak">SERIE PERFECTĂ: %1$d</string>
+    <string name="result_moves">MUTĂRI</string>
+    <string name="result_target">ȚINTĂ</string>
+    <string name="result_best">RECORD</string>
+    <string name="daily_shift">PROVOCAREA ZILEI</string>
+    <string name="daily_shift_reward">RECOMPENSĂ ZILNICĂ: +1 INDICIU!</string>
+    <string name="daily_streak_text">Serie: %1$d</string>
+    <string name="daily_best_moves">Record: %1$d</string>
+    <string name="reward_claimed_title">RECOMPENSĂ PRIMITĂ!</string>
+    <string name="reward_claimed_desc">Revino mâine pentru o recompensă nouă.</string>
+    <string name="play_again">JOACĂ DIN NOU</string>
 </resources>

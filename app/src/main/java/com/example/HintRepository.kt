@@ -112,6 +112,14 @@ class HintRepository private constructor(private val context: Context) {
         return consumed
     }
 
+    fun addDailyShiftHint() {
+        _hintState.update { current ->
+            val newState = current.copy(bonusHintsBalance = current.bonusHintsBalance + 1)
+            saveState(newState)
+            newState
+        }
+    }
+
     fun addRewardedAdHint() {
         _hintState.update { current ->
             val newState = current.copy(bonusHintsBalance = current.bonusHintsBalance + 1)
@@ -122,7 +130,7 @@ class HintRepository private constructor(private val context: Context) {
     }
 
     // Returns true if bonus was granted
-    fun checkAndGrantThresholdBonus(level: Int): Boolean {
+    fun checkAndGrantThresholdBonus(level: Int, localizedContext: Context? = null): Boolean {
         if (level % 10 != 0 || level == 0) return false
         
         var granted = false
@@ -132,11 +140,12 @@ class HintRepository private constructor(private val context: Context) {
                 granted = true
                 val newSet = current.rewardedThresholds + levelKey
                 val newState = current.copy(
-                    bonusHintsBalance = current.bonusHintsBalance + 3,
+                    bonusHintsBalance = current.bonusHintsBalance + 1,
                     rewardedThresholds = newSet
                 )
                 saveState(newState)
-                HintEventBus.emitEvent(context.getString(R.string.progress_bonus))
+                val ctx = localizedContext ?: context
+                HintEventBus.emitEvent(ctx.getString(R.string.progress_bonus))
                 newState
             } else {
                 current

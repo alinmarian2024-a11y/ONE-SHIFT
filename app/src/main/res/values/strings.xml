@@ -83,11 +83,11 @@
     <string name="level_completed">Level completed!</string>
     <string name="daily_bonus">DAILY BONUS: YOU HAVE %1$d HINTS AVAILABLE</string>
     <string name="hint_received">YOU RECEIVED 1 HINT</string>
-    <string name="progress_bonus">PROGRESS BONUS: +3 HINTS</string>
+    <string name="progress_bonus">MILESTONE REACHED! You received +1 hint for completing 10 more levels.</string>
     <string name="desc_music">Music</string>
     <string name="desc_sfx">Sound Effects</string>
     <string name="desc_exit_game">Exit Game</string>
-    <string name="star_msg_5">PERFECT SHIFT! Sharp mind!</string>
+    <string name="star_msg_5">PERFECT SHIFT!</string>
     <string name="star_msg_4">Excellent! Very close to perfect!</string>
     <string name="star_msg_3">Very good! Level solved!</string>
     <string name="star_msg_2">You did it! You can do even better!</string>
@@ -102,4 +102,22 @@
     <string name="hint_count">HINT • %1$d</string>
     <string name="watch_video_hint">WATCH VIDEO • +1 HINT</string>
     <string name="test_ad">TEST AD (3s)</string>
+    <string name="chapter_1">The Beginning</string>
+    <string name="chapter_2">The Path</string>
+    <string name="chapter_3">The Challenge</string>
+    <string name="chapter_4">The Maze</string>
+    <string name="chapter_5">The Illusion</string>
+    <string name="chapter_6">The Mastery</string>
+    <string name="level_progress">Level %1$d/%2$d</string>
+    <string name="perfect_streak">PERFECT STREAK: %1$d</string>
+    <string name="result_moves">MOVES</string>
+    <string name="result_target">TARGET</string>
+    <string name="result_best">BEST</string>
+    <string name="daily_shift">DAILY SHIFT</string>
+    <string name="daily_shift_reward">DAILY REWARD: +1 HINT!</string>
+    <string name="daily_streak_text">Streak: %1$d</string>
+    <string name="daily_best_moves">Best: %1$d</string>
+    <string name="reward_claimed_title">REWARD CLAIMED!</string>
+    <string name="reward_claimed_desc">Come back tomorrow for a new reward.</string>
+    <string name="play_again">PLAY AGAIN</string>
 </resources>

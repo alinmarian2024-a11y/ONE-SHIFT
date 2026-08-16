@@ -1,4 +1,6 @@
 package com.example
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.res.stringResource
 import com.example.R
 import android.content.Context
@@ -6,6 +8,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,6 +36,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import android.view.HapticFeedbackConstants
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -73,16 +79,16 @@ data class PuzzleData(
     val config: LevelConfig
 )
 
-fun getLevelConfig(level: Int): LevelConfig {
+fun getLevelConfig(level: Int, random: kotlin.random.Random = kotlin.random.Random.Default): LevelConfig {
     return when (level) {
         1 -> LevelConfig(2, 1)
         in 2..5 -> LevelConfig(2, 1)
         in 6..10 -> LevelConfig(2, 2)
         in 11..15 -> LevelConfig(3, 1)
-        in 16..25 -> LevelConfig(3, Random.nextInt(2, 4))
-        in 26..40 -> LevelConfig(3, Random.nextInt(3, 5))
-        in 41..50 -> LevelConfig(4, Random.nextInt(1, 4))
-        else -> LevelConfig(4, Random.nextInt(3, 7))
+        in 16..25 -> LevelConfig(3, random.nextInt(2, 4))
+        in 26..40 -> LevelConfig(3, random.nextInt(3, 5))
+        in 41..50 -> LevelConfig(4, random.nextInt(1, 4))
+        else -> LevelConfig(4, random.nextInt(3, 7))
     }
 }
 
@@ -137,14 +143,15 @@ fun updatePath(move: Move, currentPath: List<Move>, setPath: (List<Move>) -> Uni
     }
 }
 
-fun generatePuzzle(level: Int): PuzzleData {
-    val config = getLevelConfig(level)
+fun generatePuzzle(level: Int, seed: Long? = null): PuzzleData {
+    val random = if (seed != null) kotlin.random.Random(seed) else kotlin.random.Random.Default
+    val config = getLevelConfig(level, random)
     var targetBoard: List<List<PieceType>>
     var playerBoard: List<List<PieceType>>
     var solutionMoves: List<Move>
     do {
         targetBoard = (0 until config.size).map {
-            (0 until config.size).map { PieceType.entries.random() }
+            (0 until config.size).map { PieceType.entries.random(random) }
         }
         val moves = mutableListOf<Move>()
         var currentBoard = targetBoard
@@ -152,9 +159,9 @@ fun generatePuzzle(level: Int): PuzzleData {
         for (i in 0 until config.moves) {
             var move: Move
             do {
-                val isRow = Random.nextBoolean()
-                val index = Random.nextInt(config.size)
-                val dir = if (Random.nextBoolean()) 1 else -1
+                val isRow = random.nextBoolean()
+                val index = random.nextInt(config.size)
+                val dir = if (random.nextBoolean()) 1 else -1
                 move = Move(isRow, index, dir)
             } while (lastMove != null && lastMove.isRow == move.isRow && lastMove.index == move.index && lastMove.direction == -move.direction)
             moves.add(move)
@@ -166,6 +173,7 @@ fun generatePuzzle(level: Int): PuzzleData {
     } while (playerBoard == targetBoard)
     return PuzzleData(targetBoard, playerBoard, solutionMoves, config)
 }
+
 
 enum class ScreenState { MENU, LEVEL_SELECT, GAME, ABOUT }
 
@@ -213,6 +221,7 @@ fun MainMenuScreen(
     onContinue: () -> Unit, 
     onNewGame: () -> Unit,
     onSelectLevel: () -> Unit, 
+    onDailyShift: () -> Unit,
     onRemoveAds: () -> Unit,
     onSettings: () -> Unit,
     onAbout: () -> Unit,
@@ -297,6 +306,11 @@ fun MainMenuScreen(
             Box(modifier = Modifier.height(6.dp).width(80.dp).background(Color(0xFFD0BCFF)).padding(bottom = 64.dp))
             Spacer(modifier = Modifier.height(48.dp))
         
+        Button(onClick = onDailyShift, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700)), modifier = Modifier.fillMaxWidth().height(64.dp)) {
+            Text(stringResource(R.string.daily_shift), color = Color(0xFF0F172A), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        
         if (hasCampaign) {
             Button(onClick = onContinue, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF)), modifier = Modifier.fillMaxWidth().height(64.dp)) {
                 Text(stringResource(R.string.continue_game), color = Color(0xFF0F172A), fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -360,12 +374,48 @@ fun MainMenuScreen(
 fun LevelSelectScreen(modifier: Modifier = Modifier, prefs: android.content.SharedPreferences, onLevelClick: (Int) -> Unit, onBack: () -> Unit) {
     val maxUnlocked = prefs.getInt("max_unlocked_level", 1)
     
-    Column(modifier = modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF020617))))) {
+    val initialChapter = remember { 
+        gameChapters.firstOrNull { maxUnlocked in it.startLevel..it.endLevel } ?: gameChapters.last()
+    }
+    var selectedChapter by remember { mutableStateOf(initialChapter) }
+
+    Column(modifier = modifier.fillMaxSize().background(selectedChapter.backgroundBrush)) {
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) {
-                Text(stringResource(R.string.back), color = Color(0xFFD0BCFF))
+                Text(stringResource(R.string.back), color = selectedChapter.accentColor)
             }
             Text(stringResource(R.string.select_level_title), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp))
+        }
+        
+        ScrollableTabRow(
+            selectedTabIndex = gameChapters.indexOf(selectedChapter),
+            containerColor = Color.Transparent,
+            contentColor = selectedChapter.accentColor,
+            edgePadding = 16.dp,
+            indicator = { tabPositions ->
+                val index = gameChapters.indexOf(selectedChapter)
+                if (index in tabPositions.indices) {
+                    TabRowDefaults.SecondaryIndicator(
+                        Modifier.tabIndicatorOffset(tabPositions[index]),
+                        color = selectedChapter.accentColor
+                    )
+                }
+            },
+            divider = { }
+        ) {
+            gameChapters.forEach { chapter ->
+                Tab(
+                    selected = selectedChapter == chapter,
+                    onClick = { selectedChapter = chapter },
+                    text = { 
+                        Text(
+                            text = stringResource(chapter.nameResId).uppercase(), 
+                            color = if (selectedChapter == chapter) selectedChapter.accentColor else Color.White.copy(alpha = 0.5f),
+                            fontWeight = if (selectedChapter == chapter) FontWeight.Bold else FontWeight.Normal
+                        ) 
+                    }
+                )
+            }
         }
         
         LazyVerticalGrid(
@@ -374,8 +424,9 @@ fun LevelSelectScreen(modifier: Modifier = Modifier, prefs: android.content.Shar
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(maxOf(50, maxUnlocked + 5)) { index ->
-                val level = index + 1
+            val levelCount = selectedChapter.endLevel - selectedChapter.startLevel + 1
+            items(levelCount) { index ->
+                val level = selectedChapter.startLevel + index
                 val isUnlocked = level <= maxUnlocked
                 val stars = getLevelStars(prefs, level)
                 
@@ -542,30 +593,64 @@ fun AboutScreen(modifier: Modifier = Modifier, onBack: () -> Unit) {
 }
 
 @Composable
+fun ResultBox(label: String, value: String, valueColor: Color) {
+    Column(
+        modifier = Modifier
+            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = label, color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(text = value, color = valueColor, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+    }
+}
+
+data class ConfettiParticle(val vx: Float, val vy: Float, val size: Float, val color: Color, val rotSpeed: Float)
+
+@Composable
 fun CompletionDialog(
     level: Int,
     movesUsed: Int,
     recommendedMoves: Int,
     bestMoves: Int,
+    perfectStreak: Int,
+    accentColor: Color = Color(0xFFD0BCFF),
     onNextLevel: () -> Unit,
     onReplay: () -> Unit,
     onMenu: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    isDailyShift: Boolean = false
 ) {
     val stars = calculateStars(movesUsed, recommendedMoves)
     var animatedStarCount by remember { mutableIntStateOf(0) }
-    
+    var showDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
+        showDialog = true
         for (i in 1..5) {
             delay(150)
             if (i <= stars) animatedStarCount = i
         }
     }
 
+    val cardScale by animateFloatAsState(
+        targetValue = if (showDialog) 1f else 0.5f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+        label = "card_scale"
+    )
+    
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (showDialog) 1f else 0f,
+        animationSpec = tween(400),
+        label = "card_alpha"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.8f))
+            .background(Color.Black.copy(alpha = 0.85f))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
@@ -573,32 +658,73 @@ fun CompletionDialog(
             ),
         contentAlignment = Alignment.Center
     ) {
-        val hasGlow = animatedStarCount == 5
+        val confettiProgress = remember { Animatable(0f) }
+        LaunchedEffect(Unit) {
+            confettiProgress.animateTo(1f, tween(2500, easing = LinearOutSlowInEasing))
+        }
+        val particles = remember {
+            List(50) {
+                val angle = Random.nextFloat() * 2 * Math.PI
+                val speed = Random.nextFloat() * 400f + 100f
+                val size = Random.nextFloat() * 15f + 10f
+                val color = listOf(accentColor, Color(0xFFFFD700), Color.White, Color(0xFF38E887)).random()
+                val rotSpeed = Random.nextFloat() * 360f - 180f
+                ConfettiParticle(
+                    vx = (Math.cos(angle) * speed).toFloat(), 
+                    vy = (Math.sin(angle) * speed - 200f).toFloat(), 
+                    size = size, 
+                    color = color, 
+                    rotSpeed = rotSpeed
+                )
+            }
+        }
+        
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            val p = confettiProgress.value
+            val center = Offset(size.width / 2, size.height / 2 - 200f)
+            if (p < 1f) {
+                for (particle in particles) {
+                    val currentX = center.x + particle.vx * p * 2f
+                    val currentY = center.y + particle.vy * p * 2f + (800f * p * p)
+                    val alpha = (1f - p).coerceIn(0f, 1f)
+                    
+                    rotate(particle.rotSpeed * p * 2f, pivot = Offset(currentX, currentY)) {
+                        drawRect(
+                            color = particle.color.copy(alpha = alpha),
+                            topLeft = Offset(currentX, currentY),
+                            size = androidx.compose.ui.geometry.Size(particle.size, particle.size)
+                        )
+                    }
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
+                .graphicsLayer {
+                    scaleX = cardScale
+                    scaleY = cardScale
+                    alpha = cardAlpha
+                }
                 .padding(24.dp)
-                .shadow(if (hasGlow) 24.dp else 8.dp, RoundedCornerShape(24.dp), spotColor = if (hasGlow) Color(0xFFFFD700) else Color.Black)
+                .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = accentColor)
                 .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF2B2930))
-                .border(
-                    width = if (hasGlow) 2.dp else 0.dp, 
-                    color = if (hasGlow) Color(0xFFFFD700).copy(alpha = 0.5f) else Color.Transparent, 
-                    shape = RoundedCornerShape(24.dp)
-                )
+                .background(Brush.verticalGradient(listOf(Color(0xFF2B2930), Color(0xFF1A1A1E))))
+                .border(2.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = getStarMessage(stars),
                 color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
-                text = stringResource(R.string.level_title, level),
-                color = Color(0xFFD0BCFF),
+                text = if (isDailyShift) stringResource(R.string.daily_shift) else stringResource(R.string.level_title, level),
+                color = accentColor,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -606,44 +732,88 @@ fun CompletionDialog(
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 24.dp)
             ) {
                 for (i in 1..5) {
                     val isEarned = i <= stars
                     val isAnimated = i <= animatedStarCount
                     val scale by animateFloatAsState(
-                        targetValue = if (isAnimated) 1.2f else 1f,
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+                        targetValue = if (isAnimated) 1.2f else if (isEarned) 1f else 0.8f,
+                        animationSpec = spring(dampingRatio = 0.5f, stiffness = 200f),
                         label = "star_scale_$i"
                     )
                     Text(
-                        text = if (isEarned) "★" else "☆",
-                        color = if (isAnimated) Color(0xFFFFD700) else Color.Gray.copy(alpha = 0.3f),
-                        fontSize = 36.sp,
-                        modifier = Modifier.scale(if (isEarned) scale else 1f)
+                        text = "★",
+                        color = if (isAnimated) Color(0xFFFFD700) else Color.DarkGray.copy(alpha = 0.5f),
+                        fontSize = 40.sp,
+                        modifier = Modifier.scale(scale),
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = if (isAnimated) Shadow(color = Color(0xFFFFD700).copy(alpha=0.5f), blurRadius = 12f) else null
+                        )
                     )
                 }
             }
 
-            Text(stringResource(R.string.moves_used, movesUsed), color = Color.White, fontSize = 14.sp)
-            Text(stringResource(R.string.recommended_moves, recommendedMoves), color = Color.Gray, fontSize = 14.sp)
-            if (bestMoves > 0) {
-                Text(stringResource(R.string.best_result, bestMoves), color = Color(0xFF38E887), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                ResultBox(stringResource(R.string.result_moves), "$movesUsed", Color.White)
+                ResultBox(stringResource(R.string.result_target), "$recommendedMoves", Color.Gray)
+                if (bestMoves > 0) {
+                    ResultBox(stringResource(R.string.result_best), "$bestMoves", Color(0xFF38E887))
+                }
+            }
+            
+            if (perfectStreak > 0) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier
+                        .background(Color(0xFFFFD700).copy(alpha = 0.15f), RoundedCornerShape(50))
+                        .border(1.dp, Color(0xFFFFD700).copy(alpha = 0.5f), RoundedCornerShape(50))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🔥", fontSize = 16.sp, modifier = Modifier.padding(end = 6.dp))
+                    Text(
+                        text = if (isDailyShift) stringResource(R.string.daily_streak_text, perfectStreak) else stringResource(R.string.perfect_streak, perfectStreak),
+                        color = Color(0xFFFFD700),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = onNextLevel,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD0BCFF)),
+                onClick = if (isDailyShift) onMenu else onNextLevel,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                contentPadding = PaddingValues(0.dp),
+                shape = RoundedCornerShape(50),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
-                Text(stringResource(R.string.next_level), color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Brush.verticalGradient(listOf(accentColor.copy(alpha = 0.9f), accentColor.copy(alpha = 0.6f))))
+                        .border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(50)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isDailyShift) stringResource(R.string.main_menu) else stringResource(R.string.next_level), 
+                        color = Color(0xFF0F172A), 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 18.sp,
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = Shadow(color = Color.White.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 2f)
+                        )
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Button(
                 onClick = onReplay,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)), shape = RoundedCornerShape(12.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155).copy(alpha = 0.5f)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)), 
+                shape = RoundedCornerShape(12.dp), 
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155).copy(alpha = 0.5f)),
                 modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
                 Text(stringResource(R.string.retry_level), color = Color.White)
@@ -651,8 +821,10 @@ fun CompletionDialog(
             Spacer(modifier = Modifier.height(12.dp))
             
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                TextButton(onClick = onMenu) {
-                    Text(stringResource(R.string.main_menu), color = Color(0xFFCAC4D0), fontSize = 12.sp)
+                if (!isDailyShift) {
+                    TextButton(onClick = onMenu) {
+                        Text(stringResource(R.string.main_menu), color = Color(0xFFCAC4D0), fontSize = 12.sp)
+                    }
                 }
                 TextButton(onClick = onSettings) {
                     Text(stringResource(R.string.settings_short), color = Color(0xFFCAC4D0), fontSize = 12.sp)
@@ -661,6 +833,23 @@ fun CompletionDialog(
         }
     }
 }
+
+data class Chapter(
+    val nameResId: Int,
+    val backgroundBrush: Brush,
+    val accentColor: Color,
+    val startLevel: Int,
+    val endLevel: Int
+)
+
+val gameChapters = listOf(
+    Chapter(R.string.chapter_1, Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF020617))), Color(0xFFD0BCFF), 1, 18),
+    Chapter(R.string.chapter_2, Brush.verticalGradient(listOf(Color(0xFF1A365D), Color(0xFF0D1B2A))), Color(0xFF90CDF4), 19, 36),
+    Chapter(R.string.chapter_3, Brush.verticalGradient(listOf(Color(0xFF1C4532), Color(0xFF081C15))), Color(0xFF6EE7B7), 37, 54),
+    Chapter(R.string.chapter_4, Brush.verticalGradient(listOf(Color(0xFF4A192C), Color(0xFF2D0A16))), Color(0xFFF6AD55), 55, 72),
+    Chapter(R.string.chapter_5, Brush.verticalGradient(listOf(Color(0xFF2D3748), Color(0xFF1A202C))), Color(0xFFB794F4), 73, 90),
+    Chapter(R.string.chapter_6, Brush.verticalGradient(listOf(Color(0xFF4C1D95), Color(0xFF2E1065))), Color(0xFFFBCFE8), 91, 106)
+)
 
 class MainActivity : ComponentActivity() {
 
@@ -705,6 +894,8 @@ class MainActivity : ComponentActivity() {
                 val billingUiState by billingRepository.uiState.collectAsState()
                 
                 var currentScreen by remember { mutableStateOf(ScreenState.MENU) }
+                var isDailyShift by remember { mutableStateOf(false) }
+                var dailySeed by remember { mutableStateOf<Long?>(null) }
                 var gameLevel by remember { mutableIntStateOf(prefs.getInt("max_unlocked_level", 1)) }
                 var showSettings by remember { mutableStateOf(false) }
                 var hasCampaign by remember { 
@@ -721,6 +912,18 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     HintEventBus.events.collect { message ->
                         snackbarHostState.showSnackbar(message)
+                    }
+                }
+                
+                val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                val lifecycleState by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
+                LaunchedEffect(lifecycleState) {
+                    if (lifecycleState == androidx.lifecycle.Lifecycle.State.RESUMED && isDailyShift) {
+                        val newSeed = getDailyShiftSeed()
+                        if (dailySeed != newSeed) {
+                            dailySeed = newSeed
+                            gameLevel = getDailyShiftLevelIndex(newSeed, gameChapters.last().endLevel) + 1
+                        }
                     }
                 }
 
@@ -746,11 +949,20 @@ class MainActivity : ComponentActivity() {
                             },
                             modifier = Modifier.padding(innerPadding),
                             onContinue = {
+                                isDailyShift = false
                                 val maxUnlocked = prefs.getInt("max_unlocked_level", 1)
                                 gameLevel = prefs.getInt("last_played_level", maxUnlocked).coerceIn(1, maxUnlocked)
                                 currentScreen = ScreenState.GAME
                             },
+                            onDailyShift = {
+                                isDailyShift = true
+                                val seed = getDailyShiftSeed()
+                                dailySeed = seed
+                                gameLevel = getDailyShiftLevelIndex(seed, gameChapters.last().endLevel) + 1
+                                currentScreen = ScreenState.GAME
+                            },
                             onNewGame = {
+                                isDailyShift = false
                                 val keysToKeep = listOf(
                                     "is_ad_free",
                                     "music_volume",
@@ -760,9 +972,12 @@ class MainActivity : ComponentActivity() {
                                     "initial_hint_bonus_granted",
                                     "last_daily_hint_epoch_day",
                                     "rewarded_thresholds",
-                                    "app_language"
+                                    "app_language",
+                                    "last_daily_completed_date"
                                 )
-                                val savedValues = keysToKeep.associateWith { prefs.all[it] }
+                                val savedValues = prefs.all.filterKeys { 
+                                    it in keysToKeep || it.startsWith("daily_")
+                                }
                                 prefs.edit().clear().apply()
                                 
                                 val editor = prefs.edit()
@@ -786,7 +1001,10 @@ class MainActivity : ComponentActivity() {
                                 gameLevel = 1
                                 currentScreen = ScreenState.GAME
                             },
-                            onSelectLevel = { currentScreen = ScreenState.LEVEL_SELECT },
+                            onSelectLevel = { 
+                                isDailyShift = false
+                                currentScreen = ScreenState.LEVEL_SELECT 
+                            },
                             onRemoveAds = { billingRepository.initiatePurchaseFlow(this@MainActivity) },
                             onSettings = { showSettings = true },
                             onAbout = { currentScreen = ScreenState.ABOUT },
@@ -812,12 +1030,17 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding),
                             initialLevel = gameLevel,
                             prefs = prefs,
-                            onBackToMenu = { currentScreen = ScreenState.MENU },
+                            onBackToMenu = { 
+                                isDailyShift = false
+                                currentScreen = ScreenState.MENU 
+                            },
                             isAdFree = isAdFree,
                             onRemoveAds = { billingRepository.initiatePurchaseFlow(this@MainActivity) },
                             onRestorePurchases = { billingRepository.restorePurchases() },
                             adManager = adManager,
-                            rewardedHintAdProvider = rewardedHintAdProvider
+                            rewardedHintAdProvider = rewardedHintAdProvider,
+                            isDailyShift = isDailyShift,
+                            dailySeed = dailySeed
                         )
                         ScreenState.ABOUT -> AboutScreen(
                             modifier = Modifier.padding(innerPadding),
@@ -946,11 +1169,12 @@ fun GameScreen(
     onRemoveAds: () -> Unit,
     onRestorePurchases: () -> Unit,
     adManager: AdManager,
-    rewardedHintAdProvider: RewardedHintAdProvider
+    rewardedHintAdProvider: RewardedHintAdProvider,
+    isDailyShift: Boolean = false,
+    dailySeed: Long? = null
 ) {
     var currentLevel by remember(initialLevel) { mutableIntStateOf(initialLevel) }
-
-    var puzzleData by remember { mutableStateOf(generatePuzzle(currentLevel)) }
+    var puzzleData by remember { mutableStateOf(generatePuzzle(currentLevel, dailySeed)) }
     var playerBoard by remember { mutableStateOf(puzzleData.initialPlayerBoard) }
     var movesCount by remember { mutableIntStateOf(0) }
     var isSolved by remember { mutableStateOf(false) }
@@ -958,8 +1182,12 @@ fun GameScreen(
     var currentSolutionPath by remember { mutableStateOf(puzzleData.solutionMoves) }
     var levelFinished by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
+    var showStreakBadge by remember { mutableStateOf(false) }
 
-    
+    val lastCompletedForDialog = prefs.getLong("last_daily_completed_date", 0L)
+    var showAlreadyClaimed by remember(dailySeed) {
+        mutableStateOf(isDailyShift && dailySeed != null && lastCompletedForDialog == dailySeed)
+    }
 
     var showExitDialog by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
 
@@ -1008,13 +1236,15 @@ fun GameScreen(
     }
 
 
-    LaunchedEffect(currentLevel) {
-        prefs.edit()
-            .putBoolean("campaign_started", true)
-            .putInt("last_played_level", currentLevel)
-            .apply()
+    LaunchedEffect(currentLevel, dailySeed) {
+        if (!isDailyShift) {
+            prefs.edit()
+                .putBoolean("campaign_started", true)
+                .putInt("last_played_level", currentLevel)
+                .apply()
+        }
             
-        puzzleData = generatePuzzle(currentLevel)
+        puzzleData = generatePuzzle(currentLevel, dailySeed)
         playerBoard = puzzleData.initialPlayerBoard
         currentSolutionPath = puzzleData.solutionMoves
         movesCount = 0
@@ -1022,16 +1252,53 @@ fun GameScreen(
         showHint = false
         levelFinished = false
         inputLocked = false
+        
+        if (prefs.getInt("perfect_streak", 0) > 0) {
+            showStreakBadge = true
+            launch {
+                delay(2000)
+                showStreakBadge = false
+            }
+        }
     }
-
     LaunchedEffect(playerBoard) {
         if (playerBoard == puzzleData.targetBoard && !isSolved) {
             isSolved = true
             val stars = calculateStars(movesCount, puzzleData.config.moves)
-            saveLevelResult(prefs, currentLevel, stars, movesCount)
+            
+            if (isDailyShift && dailySeed != null) {
+                val seedStr = dailySeed.toString()
+                val currentDailyBest = prefs.getInt("daily_best_moves_$seedStr", -1)
+                if (currentDailyBest == -1 || movesCount < currentDailyBest) {
+                    prefs.edit().putInt("daily_best_moves_$seedStr", movesCount).apply()
+                }
+                val lastCompleted = prefs.getLong("last_daily_completed_date", 0L)
+                if (lastCompleted != dailySeed) {
+                    val currentDailyStreak = prefs.getInt("daily_streak", 0)
+                    val newStreak = if (lastCompleted == dailySeed - 1) currentDailyStreak + 1 else 1
+                    prefs.edit()
+                        .putLong("last_daily_completed_date", dailySeed)
+                        .putInt("daily_streak", newStreak)
+                        .apply()
+                    hintRepository.addDailyShiftHint()
+                    launch {
+                        HintEventBus.emitEvent(context.getString(R.string.daily_shift_reward))
+                    }
+                }
+            } else {
+                saveLevelResult(prefs, currentLevel, stars, movesCount)
+                
+                val currentStreak = prefs.getInt("perfect_streak", 0)
+                if (movesCount <= puzzleData.config.moves) {
+                    prefs.edit().putInt("perfect_streak", currentStreak + 1).apply()
+                } else {
+                    prefs.edit().putInt("perfect_streak", 0).apply()
+                }
+                hintRepository.checkAndGrantThresholdBonus(currentLevel, context)
+            }
+            
             delay(300)
             audioManager.playSolve(stars)
-            hintRepository.checkAndGrantThresholdBonus(currentLevel)
             levelFinished = true
         }
     }
@@ -1043,6 +1310,11 @@ fun GameScreen(
         inputLocked -> "ANIMATION"
         else -> null
     }
+
+    val currentChapter = remember(currentLevel) {
+        gameChapters.firstOrNull { currentLevel in it.startLevel..it.endLevel } ?: gameChapters.first()
+    }
+    val totalLevels = 106
 
     BackHandler(enabled = !levelFinished && !showExitDialog) {
         showExitDialog = true
@@ -1061,7 +1333,7 @@ fun GameScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF020617))))
+                .background(currentChapter.backgroundBrush)
                 .padding(vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
@@ -1072,15 +1344,53 @@ fun GameScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "ONE SHIFT",
-                        color = Color.White,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-1).sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Box(modifier = Modifier.height(4.dp).width(48.dp).background(Color(0xFFD0BCFF)))
+                    if (isDailyShift) {
+                        Text(
+                            text = stringResource(R.string.daily_shift).uppercase(),
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-1).sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        val formatter = java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM)
+                        val dateString = if (dailySeed != null) java.time.LocalDate.ofEpochDay(dailySeed).format(formatter) else java.time.LocalDate.now().format(formatter)
+                        Text(
+                            text = "$dateString • " + stringResource(R.string.daily_streak_text, prefs.getInt("daily_streak", 0)),
+                            color = Color(0xFFFFD700),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { 1f },
+                            modifier = Modifier.height(4.dp).width(120.dp).clip(RoundedCornerShape(2.dp)),
+                            color = Color(0xFFFFD700),
+                            trackColor = Color(0xFFFFD700).copy(alpha = 0.3f),
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(currentChapter.nameResId).uppercase(),
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-1).sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = stringResource(R.string.level_progress, currentLevel, totalLevels),
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { currentLevel.toFloat() / totalLevels },
+                            modifier = Modifier.height(4.dp).width(120.dp).clip(RoundedCornerShape(2.dp)),
+                            color = currentChapter.accentColor,
+                            trackColor = currentChapter.accentColor.copy(alpha = 0.3f),
+                        )
+                    }
                 }
                 TextButton(
                     onClick = {
@@ -1105,7 +1415,7 @@ fun GameScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(R.string.level_title, currentLevel),
+                        text = if (isDailyShift) stringResource(R.string.daily_shift) else stringResource(R.string.level_title, currentLevel),
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
@@ -1120,7 +1430,7 @@ fun GameScreen(
 
                 Text(
                     text = stringResource(R.string.target_pattern),
-                    color = Color(0xFFD0BCFF),
+                    color = currentChapter.accentColor,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 2.sp,
@@ -1156,7 +1466,7 @@ fun GameScreen(
                 if (isTutorial && !isSolved) {
                     Text(
                         text = stringResource(R.string.tutorial_swipe),
-                        color = Color(0xFFD0BCFF),
+                        color = currentChapter.accentColor,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(bottom = 24.dp)
@@ -1317,7 +1627,10 @@ fun GameScreen(
                 level = currentLevel,
                 movesUsed = movesCount,
                 recommendedMoves = puzzleData.config.moves,
-                bestMoves = getLevelMinMoves(prefs, currentLevel),
+                bestMoves = if (isDailyShift && dailySeed != null) prefs.getInt("daily_best_moves_$dailySeed", -1) else getLevelMinMoves(prefs, currentLevel),
+                perfectStreak = if (isDailyShift) prefs.getInt("daily_streak", 0) else prefs.getInt("perfect_streak", 0),
+                accentColor = currentChapter.accentColor,
+                isDailyShift = isDailyShift,
                 onNextLevel = {
                     adManager.showPendingInterstitialIfAny(
                         activity = context as android.app.Activity,
@@ -1350,6 +1663,27 @@ fun GameScreen(
                 },
                 onSettings = { showSettings = true }
             )
+        }
+        
+        AnimatedVisibility(
+            visible = showStreakBadge,
+            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(initialOffsetY = { -50 }, animationSpec = tween(300)),
+            exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(targetOffsetY = { -50 }, animationSpec = tween(300)),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 80.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(Color(0xFFFFD700).copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                    .border(1.dp, Color(0xFFFFD700), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.perfect_streak, prefs.getInt("perfect_streak", 0)),
+                    color = Color(0xFFFFD700),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
         }
 
         if (showSettings) {
@@ -1406,6 +1740,32 @@ fun GameScreen(
                 containerColor = Color(0xFF2B2930)
             )
         }
+
+        if (showAlreadyClaimed) {
+            AlertDialog(
+                properties = androidx.compose.ui.window.DialogProperties(
+                    dismissOnClickOutside = false,
+                    dismissOnBackPress = false
+                ),
+                onDismissRequest = { },
+                title = { Text(stringResource(R.string.reward_claimed_title), color = Color.White, fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(R.string.reward_claimed_desc), color = Color.Gray) },
+                confirmButton = {
+                    TextButton(onClick = { showAlreadyClaimed = false }) {
+                        Text(stringResource(R.string.play_again), color = Color(0xFFD0BCFF), fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        showAlreadyClaimed = false
+                        onBackToMenu()
+                    }) {
+                        Text(stringResource(R.string.back), color = Color.Gray)
+                    }
+                },
+                containerColor = Color(0xFF2B2930)
+            )
+        }
     }
 }
 
@@ -1434,12 +1794,18 @@ fun Board(
 
     var animatingRow by remember { mutableStateOf<Int?>(null) }
     var animatingCol by remember { mutableStateOf<Int?>(null) }
-    var animationDir by remember { mutableIntStateOf(0) }
     val offsetAnim = remember { Animatable(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    val pulseAlpha = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
     
     val currentInteractable by rememberUpdatedState(interactable)
     val currentIsInputLocked by rememberUpdatedState(isInputLocked)
+    
+    val view = LocalView.current
+    
+    val dragScale by animateFloatAsState(targetValue = if (isDragging) 1.05f else 1f, label = "scale")
+    val dragShadow by animateFloatAsState(targetValue = if (isDragging) 8f else 0f, label = "shadow")
 
     Box(
         modifier = Modifier
@@ -1454,6 +1820,58 @@ fun Board(
                         accumulatedDx = 0f
                         accumulatedDy = 0f
                         actionCommitted = false
+                        isDragging = true
+                    },
+                    onDragEnd = {
+                        if (!isDragging) return@detectDragGestures
+                        isDragging = false
+                        if (animatingRow != null || animatingCol != null) {
+                            val isRow = animatingRow != null
+                            val index = animatingRow ?: animatingCol!!
+                            val offset = offsetAnim.value
+                            val threshold = cellPx * 0.4f
+                            
+                            onInputLockedChange(true)
+                            coroutineScope.launch {
+                                if (abs(offset) > threshold) {
+                                    val direction = if (offset > 0) 1 else -1
+                                    onAnimationStart()
+                                    // Smooth 200 ms bounce animation
+                                    offsetAnim.animateTo(
+                                        targetValue = direction * cellPx,
+                                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f)
+                                    )
+                                    view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+                                    
+                                    launch {
+                                        pulseAlpha.snapTo(0.4f)
+                                        pulseAlpha.animateTo(0f, tween(300))
+                                    }
+                                    
+                                    if (isRow) onShiftRow(index, direction) else onShiftCol(index, direction)
+                                } else {
+                                    offsetAnim.animateTo(
+                                        targetValue = 0f,
+                                        animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f)
+                                    )
+                                }
+                                offsetAnim.snapTo(0f)
+                                animatingRow = null
+                                animatingCol = null
+                                onInputLockedChange(false)
+                            }
+                        }
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                        if (animatingRow != null || animatingCol != null) {
+                            coroutineScope.launch {
+                                offsetAnim.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 400f))
+                                offsetAnim.snapTo(0f)
+                                animatingRow = null
+                                animatingCol = null
+                            }
+                        }
                     },
                     onDrag = { change, dragAmount ->
                         change.consume()
@@ -1462,51 +1880,22 @@ fun Board(
                         accumulatedDx += dragAmount.x
                         accumulatedDy += dragAmount.y
 
-                        val threshold = 50f
-
-                        if (abs(accumulatedDx) > threshold && abs(accumulatedDx) > abs(accumulatedDy)) {
-                            val direction = if (accumulatedDx > 0) 1 else -1
-                            actionCommitted = true
-                            onInputLockedChange(true)
-                            onAnimationStart()
-                            coroutineScope.launch {
-                                try {
-                                    animatingRow = startRow
-                                    animationDir = direction
-                                    offsetAnim.animateTo(
-                                        targetValue = direction * cellPx,
-                                        animationSpec = tween(250, easing = FastOutSlowInEasing)
-                                    )
-                                    onShiftRow(startRow, direction)
-                                } catch (e: Exception) {
-                                    // Ignoră erorile sau anulările, important e să trecem prin finally
-                                } finally {
-                                    offsetAnim.snapTo(0f)
-                                    animatingRow = null
-                                    onInputLockedChange(false)
-                                }
+                        if (animatingRow == null && animatingCol == null) {
+                            val triggerThreshold = 10f
+                            if (abs(accumulatedDx) > triggerThreshold && abs(accumulatedDx) > abs(accumulatedDy)) {
+                                animatingRow = startRow
+                            } else if (abs(accumulatedDy) > triggerThreshold && abs(accumulatedDy) > abs(accumulatedDx)) {
+                                animatingCol = startCol
                             }
-                        } else if (abs(accumulatedDy) > threshold && abs(accumulatedDy) > abs(accumulatedDx)) {
-                            val direction = if (accumulatedDy > 0) 1 else -1
-                            actionCommitted = true
-                            onInputLockedChange(true)
-                            onAnimationStart()
+                        }
+
+                        if (animatingRow != null) {
                             coroutineScope.launch {
-                                try {
-                                    animatingCol = startCol
-                                    animationDir = direction
-                                    offsetAnim.animateTo(
-                                        targetValue = direction * cellPx,
-                                        animationSpec = tween(250, easing = FastOutSlowInEasing)
-                                    )
-                                    onShiftCol(startCol, direction)
-                                } catch (e: Exception) {
-                                    // Ignoră erorile sau anulările
-                                } finally {
-                                    offsetAnim.snapTo(0f)
-                                    animatingCol = null
-                                    onInputLockedChange(false)
-                                }
+                                offsetAnim.snapTo(accumulatedDx.coerceIn(-cellPx, cellPx))
+                            }
+                        } else if (animatingCol != null) {
+                            coroutineScope.launch {
+                                offsetAnim.snapTo(accumulatedDy.coerceIn(-cellPx, cellPx))
                             }
                         }
                     }
@@ -1518,7 +1907,7 @@ fun Board(
             Box(modifier = Modifier
                 .offset { IntOffset(0, yOffset.toInt()) }
                 .size(width = boardPx, height = pieceSize)
-                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                .background(Color.White.copy(alpha = pulseAlpha.value.coerceIn(0f, 1f)), RoundedCornerShape(8.dp))
             )
         }
         if (animatingCol != null) {
@@ -1526,7 +1915,7 @@ fun Board(
             Box(modifier = Modifier
                 .offset { IntOffset(xOffset.toInt(), 0) }
                 .size(width = pieceSize, height = boardPx)
-                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                .background(Color.White.copy(alpha = pulseAlpha.value.coerceIn(0f, 1f)), RoundedCornerShape(8.dp))
             )
         }
 
@@ -1535,42 +1924,74 @@ fun Board(
                 val piece = board[row][col]
                 var xOffset = col * cellPx
                 var yOffset = row * cellPx
+                var isAnimatingPiece = false
 
                 if (animatingRow == row) {
                     xOffset += offsetAnim.value
+                    isAnimatingPiece = true
                 } else if (animatingCol == col) {
                     yOffset += offsetAnim.value
+                    isAnimatingPiece = true
                 }
 
-                Box(modifier = Modifier.offset { IntOffset(xOffset.toInt(), yOffset.toInt()) }) {
+                val scale = if (isAnimatingPiece) dragScale else 1f
+                val shadow = if (isAnimatingPiece) dragShadow else 0f
+                val zIndex = if (isAnimatingPiece) 1f else 0f
+
+                Box(modifier = Modifier
+                    .offset { IntOffset(xOffset.toInt(), yOffset.toInt()) }
+                    .zIndex(zIndex)
+                    .scale(scale)
+                    .shadow(shadow.dp, RoundedCornerShape(8.dp))
+                ) {
                     GamePiece(piece = piece, size = pieceSize)
                 }
 
                 if (animatingRow == row) {
-                    if (animationDir > 0 && col == boardSize - 1) {
-                        val ghostXOffset = -1 * cellPx + offsetAnim.value
-                        Box(modifier = Modifier.offset { IntOffset(ghostXOffset.toInt(), yOffset.toInt()) }) {
+                    if (col == 0) {
+                        val ghostXOffset = boardSize * cellPx + offsetAnim.value
+                        Box(modifier = Modifier
+                            .offset { IntOffset(ghostXOffset.toInt(), yOffset.toInt()) }
+                            .zIndex(1f)
+                            .scale(dragScale)
+                            .shadow(dragShadow.dp, RoundedCornerShape(8.dp))
+                        ) {
                             GamePiece(piece = piece, size = pieceSize)
                         }
                     }
-                    if (animationDir < 0 && col == 0) {
-                        val ghostXOffset = boardSize * cellPx + offsetAnim.value
-                        Box(modifier = Modifier.offset { IntOffset(ghostXOffset.toInt(), yOffset.toInt()) }) {
+                    if (col == boardSize - 1) {
+                        val ghostXOffset = -1 * cellPx + offsetAnim.value
+                        Box(modifier = Modifier
+                            .offset { IntOffset(ghostXOffset.toInt(), yOffset.toInt()) }
+                            .zIndex(1f)
+                            .scale(dragScale)
+                            .shadow(dragShadow.dp, RoundedCornerShape(8.dp))
+                        ) {
                             GamePiece(piece = piece, size = pieceSize)
                         }
                     }
                 }
 
                 if (animatingCol == col) {
-                    if (animationDir > 0 && row == boardSize - 1) {
-                        val ghostYOffset = -1 * cellPx + offsetAnim.value
-                        Box(modifier = Modifier.offset { IntOffset(xOffset.toInt(), ghostYOffset.toInt()) }) {
+                    if (row == 0) {
+                        val ghostYOffset = boardSize * cellPx + offsetAnim.value
+                        Box(modifier = Modifier
+                            .offset { IntOffset(xOffset.toInt(), ghostYOffset.toInt()) }
+                            .zIndex(1f)
+                            .scale(dragScale)
+                            .shadow(dragShadow.dp, RoundedCornerShape(8.dp))
+                        ) {
                             GamePiece(piece = piece, size = pieceSize)
                         }
                     }
-                    if (animationDir < 0 && row == 0) {
-                        val ghostYOffset = boardSize * cellPx + offsetAnim.value
-                        Box(modifier = Modifier.offset { IntOffset(xOffset.toInt(), ghostYOffset.toInt()) }) {
+                    if (row == boardSize - 1) {
+                        val ghostYOffset = -1 * cellPx + offsetAnim.value
+                        Box(modifier = Modifier
+                            .offset { IntOffset(xOffset.toInt(), ghostYOffset.toInt()) }
+                            .zIndex(1f)
+                            .scale(dragScale)
+                            .shadow(dragShadow.dp, RoundedCornerShape(8.dp))
+                        ) {
                             GamePiece(piece = piece, size = pieceSize)
                         }
                     }
@@ -1706,4 +2127,15 @@ fun GamePiece(piece: PieceType, size: Dp) {
             )
         )
     }
+}
+fun getDailyShiftSeed(): Long {
+    val utcMillis = System.currentTimeMillis()
+    // Align to UTC day. 
+    return utcMillis / (1000 * 60 * 60 * 24)
+}
+
+fun getDailyShiftLevelIndex(seed: Long, totalLevels: Int): Int {
+    // Basic pseudo-random using seed, ensuring we don't crash
+    val random = java.util.Random(seed)
+    return random.nextInt(totalLevels)
 }
