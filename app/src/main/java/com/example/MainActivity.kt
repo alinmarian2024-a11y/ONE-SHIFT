@@ -423,9 +423,9 @@ fun MainMenuScreen(
         }
 
         var expanded by remember { mutableStateOf(false) }
-        Box(modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) {
+        Box(modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).zIndex(1f)) {
             TextButton(onClick = { expanded = true }) {
-                Text(if (appLanguage == "ro") "🌐 RO" else "🌐 EN", color = Color.White)
+                Text(if (appLanguage == "ro") "🌐 Limbă: RO" else "🌐 Language: EN", color = Color.White)
             }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(
