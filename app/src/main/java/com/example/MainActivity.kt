@@ -1264,7 +1264,13 @@ class MainActivity : ComponentActivity() {
                             onRemoveAds = { billingRepository.initiatePurchaseFlow(this@MainActivity) },
                             onSettings = { showSettings = true },
                             onAbout = { currentScreen = ScreenState.ABOUT },
-                            onExitApp = { this@MainActivity.finishAndRemoveTask() },
+                            onExitApp = { 
+                                adManager.showPendingInterstitialIfAny(
+                                    activity = this@MainActivity,
+                                    isAdFree = isAdFree,
+                                    onFinished = { this@MainActivity.finishAndRemoveTask() }
+                                )
+                            },
                             isAdFree = isAdFree,
                             hasCampaign = hasCampaign
                         )

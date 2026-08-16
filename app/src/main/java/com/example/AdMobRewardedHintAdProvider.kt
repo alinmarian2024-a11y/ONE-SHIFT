@@ -19,11 +19,13 @@ class AdMobRewardedHintAdProvider(
     private var isAdLoading = false
 
     init {
+        adManager.onMobileAdsInitialized = { loadAd() }
         loadAd()
     }
 
     private fun loadAd() {
-        if (rewardedAd != null || isAdLoading) return
+        val consentInfo = com.google.android.ump.UserMessagingPlatform.getConsentInformation(context)
+        if (rewardedAd != null || isAdLoading || !consentInfo.canRequestAds()) return
         isAdLoading = true
 
         val adRequest = AdRequest.Builder().build()
@@ -32,11 +34,13 @@ class AdMobRewardedHintAdProvider(
 
         RewardedAd.load(context, adUnitId, adRequest, object : RewardedAdLoadCallback() {
             override fun onAdFailedToLoad(adError: LoadAdError) {
+                android.util.Log.e("RewardedAd", "Rewarded ad failed to load: ${adError.message}")
                 rewardedAd = null
                 isAdLoading = false
             }
 
             override fun onAdLoaded(ad: RewardedAd) {
+                android.util.Log.d("RewardedAd", "Rewarded ad loaded successfully")
                 rewardedAd = ad
                 isAdLoading = false
             }

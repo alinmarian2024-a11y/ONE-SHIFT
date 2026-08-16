@@ -31,13 +31,14 @@ class AdManager(private val context: Context) {
 
     var interstitialPending = false
     var isAdShowing = false
+    var onMobileAdsInitialized: (() -> Unit)? = null
     
     // Timer tracking
     private var accumulatedActiveTimeMs: Long = 0
     private var sessionStartTimeMs: Long = 0
     private var isTracking = false
 
-    private val THRESHOLD_MS = 10 * 60 * 1000L // 10 minutes
+    private val THRESHOLD_MS = if (BuildConfig.DEBUG) 30 * 1000L else 12 * 60 * 1000L // 30 seconds debug, 12 mins release
 
     fun initialize(activity: Activity) {
         val params = ConsentRequestParameters.Builder()
@@ -70,6 +71,7 @@ class AdManager(private val context: Context) {
         if (isMobileAdsInitializeCalled.getAndSet(true)) return
         MobileAds.initialize(context)
         loadInterstitialAd()
+        onMobileAdsInitialized?.invoke()
     }
 
     private fun loadInterstitialAd() {
@@ -81,11 +83,13 @@ class AdManager(private val context: Context) {
         val adUnitId = "ca-app-pub-3940256099942544/1033173712"
         InterstitialAd.load(context, adUnitId, adRequest, object : InterstitialAdLoadCallback() {
             override fun onAdFailedToLoad(adError: LoadAdError) {
+                Log.e("AdManager", "Interstitial load failed: ${adError.message}")
                 interstitialAd = null
                 isAdLoading = false
             }
 
             override fun onAdLoaded(ad: InterstitialAd) {
+                Log.d("AdManager", "Interstitial ad loaded successfully")
                 interstitialAd = ad
                 isAdLoading = false
             }
@@ -140,6 +144,7 @@ class AdManager(private val context: Context) {
         isAdShowing = true
         interstitialAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
+                Log.d("AdManager", "Interstitial ad dismissed")
                 interstitialAd = null
                 isAdShowing = false
                 interstitialPending = false
@@ -149,6 +154,7 @@ class AdManager(private val context: Context) {
             }
 
             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                Log.e("AdManager", "Interstitial show failed: ${adError.message}")
                 interstitialAd = null
                 isAdShowing = false
                 // Keep pending if it failed to show? Instructions say:
