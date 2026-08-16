@@ -144,34 +144,12 @@ fun updatePath(move: Move, currentPath: List<Move>, setPath: (List<Move>) -> Uni
 }
 
 fun generatePuzzle(level: Int, seed: Long? = null): PuzzleData {
-    val random = if (seed != null) kotlin.random.Random(seed) else kotlin.random.Random.Default
+    if (seed == null) {
+        return CampaignCatalog.levels[(level - 1).coerceIn(0, 105)]
+    }
+    val random = kotlin.random.Random(seed)
     val config = getLevelConfig(level, random)
-    var targetBoard: List<List<PieceType>>
-    var playerBoard: List<List<PieceType>>
-    var solutionMoves: List<Move>
-    do {
-        targetBoard = (0 until config.size).map {
-            (0 until config.size).map { PieceType.entries.random(random) }
-        }
-        val moves = mutableListOf<Move>()
-        var currentBoard = targetBoard
-        var lastMove: Move? = null
-        for (i in 0 until config.moves) {
-            var move: Move
-            do {
-                val isRow = random.nextBoolean()
-                val index = random.nextInt(config.size)
-                val dir = if (random.nextBoolean()) 1 else -1
-                move = Move(isRow, index, dir)
-            } while (lastMove != null && lastMove.isRow == move.isRow && lastMove.index == move.index && lastMove.direction == -move.direction)
-            moves.add(move)
-            currentBoard = if (move.isRow) shiftRow(currentBoard, move.index, move.direction) else shiftCol(currentBoard, move.index, move.direction)
-            lastMove = move
-        }
-        playerBoard = currentBoard
-        solutionMoves = moves.reversed().map { it.copy(direction = -it.direction) }
-    } while (playerBoard == targetBoard)
-    return PuzzleData(targetBoard, playerBoard, solutionMoves, config)
+    return CampaignCatalog.generatePuzzleInternal(config, random)
 }
 
 
