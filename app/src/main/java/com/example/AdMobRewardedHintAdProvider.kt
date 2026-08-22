@@ -55,14 +55,17 @@ class AdMobRewardedHintAdProvider(
             return
         }
 
+        adManager.isAdShowing = true
         rewardedAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
+                adManager.isAdShowing = false
                 rewardedAd = null
                 loadAd()
                 onFailedOrClosed()
             }
 
             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                adManager.isAdShowing = false
                 rewardedAd = null
                 loadAd()
                 onFailedOrClosed()

@@ -38,7 +38,7 @@ class AdManager(private val context: Context) {
     private var sessionStartTimeMs: Long = 0
     private var isTracking = false
 
-    private val THRESHOLD_MS = if (BuildConfig.DEBUG) 30 * 1000L else 12 * 60 * 1000L // 30 seconds debug, 12 mins release
+    private val THRESHOLD_MS = 10 * 60 * 1000L // 10 minutes
 
     fun initialize(activity: Activity) {
         val params = ConsentRequestParameters.Builder()

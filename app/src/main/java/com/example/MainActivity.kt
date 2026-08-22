@@ -1209,6 +1209,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding),
                             onContinue = {
                                 isDailyShift = false
+                                dailySeed = null
                                 val maxUnlocked = prefs.getInt("max_unlocked_level", 1)
                                 gameLevel = prefs.getInt("last_played_level", maxUnlocked).coerceIn(1, maxUnlocked)
                                 currentScreen = ScreenState.GAME
@@ -1222,6 +1223,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onNewGame = {
                                 isDailyShift = false
+                                dailySeed = null
                                 val keysToKeep = listOf(
                                     "is_ad_free",
                                     "music_volume",
@@ -1259,6 +1261,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onSelectLevel = { 
                                 isDailyShift = false
+                                dailySeed = null
                                 currentScreen = ScreenState.LEVEL_SELECT 
                             },
                             onRemoveAds = { billingRepository.initiatePurchaseFlow(this@MainActivity) },
@@ -1282,6 +1285,8 @@ class MainActivity : ComponentActivity() {
                                     .putBoolean("campaign_started", true)
                                     .putInt("last_played_level", level)
                                     .apply()
+                                isDailyShift = false
+                                dailySeed = null
                                 hasCampaign = true
                                 gameLevel = level
                                 currentScreen = ScreenState.GAME
@@ -1436,7 +1441,7 @@ fun GameScreen(
     dailySeed: Long? = null
 ) {
     var currentLevel by remember(initialLevel) { mutableIntStateOf(initialLevel) }
-    var puzzleData by remember { mutableStateOf(generatePuzzle(currentLevel, dailySeed)) }
+    var puzzleData by remember { mutableStateOf(generatePuzzle(currentLevel, if (isDailyShift) dailySeed else null)) }
     var playerBoard by remember { mutableStateOf(puzzleData.initialPlayerBoard) }
     var movesCount by remember { mutableIntStateOf(0) }
     var isSolved by remember { mutableStateOf(false) }
@@ -1506,7 +1511,7 @@ fun GameScreen(
                 .apply()
         }
             
-        puzzleData = generatePuzzle(currentLevel, dailySeed)
+        puzzleData = generatePuzzle(currentLevel, if (isDailyShift) dailySeed else null)
         playerBoard = puzzleData.initialPlayerBoard
         currentSolutionPath = puzzleData.solutionMoves
         movesCount = 0
